@@ -1,0 +1,23 @@
+[package]
+name = "oxford_join"
+version = "0.1.0"
+authors = ["Blobfolio, LLC. <hello@blobfolio.com>"]
+edition = "2018"
+description = "Join string slices with Oxford Commas!"
+license = "WTFPL"
+repository = "https://github.com/Blobfolio/oxford_join"
+readme = "README.md"
+exclude = [
+	".gitignore",
+	".righteous-sandbox.json",
+	".travis.yml",
+	"doc",
+	"justfile",
+]
+
+[dev-dependencies]
+brunch = "0.1.*"
+
+[[bench]]
+name = "oj_join"
+harness = false
