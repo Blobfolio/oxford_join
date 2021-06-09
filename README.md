@@ -9,7 +9,7 @@ Join a slice of strings with [Oxford Commas](https://en.wikipedia.org/wiki/Seria
 
 The return formatting depends on the size of the set:
 
-```ignore
+```
 0: ""
 1: "first"
 2: "first <CONJUNCTION> last"
@@ -22,7 +22,7 @@ The magic is accomplished with the `OxfordJoin` trait. Import that, and most
 slice-y things holding `AsRef<str>` will inherit the `OxfordJoin::oxford_join`
 method for joining.
 
-```
+```rust
 use oxford_join::{Conjunction, OxfordJoin};
 
 let set = ["Apples", "Oranges"];
