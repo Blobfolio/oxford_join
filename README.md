@@ -3,7 +3,7 @@
 [![Documentation](https://docs.rs/oxford_join/badge.svg)](https://docs.rs/oxford_join/)
 [![crates.io](https://img.shields.io/crates/v/oxford_join.svg)](https://crates.io/crates/oxford_join)
 
-Join a slice of strings with [Oxford Commas](https://en.wikipedia.org/wiki/Serial_comma) inserted as necessary, using the [`Conjunction`] of your choice.
+Join a slice of strings with [Oxford Commas](https://en.wikipedia.org/wiki/Serial_comma) inserted as necessary, using the `Conjunction` of your choice.
 
 (You know, as it should be. Haha.)
 
@@ -18,8 +18,8 @@ n: "first, second, …, <CONJUNCTION> last"
 
 ## Examples
 
-The magic is accomplished with the [`OxfordJoin`] trait. Import that, and most
-slice-y things holding `AsRef<str>` will inherit the [`OxfordJoin::oxford_join`]
+The magic is accomplished with the `OxfordJoin` trait. Import that, and most
+slice-y things holding `AsRef<str>` will inherit the `OxfordJoin::oxford_join`
 method for joining.
 
 ```
