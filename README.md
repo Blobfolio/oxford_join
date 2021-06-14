@@ -2,6 +2,7 @@
 
 [![Documentation](https://docs.rs/oxford_join/badge.svg)](https://docs.rs/oxford_join/)
 [![crates.io](https://img.shields.io/crates/v/oxford_join.svg)](https://crates.io/crates/oxford_join)
+[![Build Status](https://github.com/Blobfolio/oxford_join/workflows/Build/badge.svg)](https://github.com/Blobfolio/oxford_join/actions)
 
 Join a slice of strings with [Oxford Commas](https://en.wikipedia.org/wiki/Serial_comma) inserted as necessary, using the `Conjunction` of your choice.
 

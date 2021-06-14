@@ -8,9 +8,9 @@ license = "WTFPL"
 repository = "https://github.com/Blobfolio/oxford_join"
 readme = "README.md"
 exclude = [
+	".github",
 	".gitignore",
 	".righteous-sandbox.json",
-	".travis.yml",
 	"doc",
 	"justfile",
 ]
