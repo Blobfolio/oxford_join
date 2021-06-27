@@ -174,9 +174,9 @@ impl Conjunction<'_> {
 	/// use oxford_join::Conjunction;
 	///
 	/// for i in [
-	///	    Conjunction::Ampersand, Conjunction::And,
-	///	    Conjunction::AndOr, Conjunction::Nor,
-	///	    Conjunction::Or, Conjunction::Plus
+	///     Conjunction::Ampersand, Conjunction::And,
+	///     Conjunction::AndOr, Conjunction::Nor,
+	///     Conjunction::Or, Conjunction::Plus
 	/// ] {
 	///     assert_eq!(i.as_str().len(), i.len());
 	/// }
