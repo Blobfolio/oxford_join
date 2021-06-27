@@ -10,7 +10,7 @@ Join a slice of strings with [Oxford Commas](https://en.wikipedia.org/wiki/Seria
 
 The return formatting depends on the size of the set:
 
-```ignore
+```ignore,text
 0: ""
 1: "first"
 2: "first <CONJUNCTION> last"
@@ -84,12 +84,12 @@ use std::{
 /// ## Examples.
 ///
 /// If a set has exactly two items:
-/// ```ignore
+/// ```ignore,text
 /// first <CONJUNCTION> last
 /// ```
 ///
 /// If a set has three or more items:
-/// ```ignore
+/// ```ignore,text
 /// first, second, …, <CONJUNCTION> last
 /// ```
 ///
@@ -145,9 +145,12 @@ impl<'a> From<&'a str> for Conjunction<'a> {
 	fn from(src: &'a str) -> Self { Self::Other(src.trim()) }
 }
 
+#[allow(clippy::len_without_is_empty)] // They shouldn't ever be empty.
 impl Conjunction<'_> {
 	#[must_use]
 	/// # As Str.
+	///
+	/// Return the conjunction as a string slice.
 	pub const fn as_str(&self) -> &str {
 		match self {
 			Self::Ampersand => "&",
@@ -157,6 +160,34 @@ impl Conjunction<'_> {
 			Self::Or => "or",
 			Self::Other(s) => s,
 			Self::Plus => "+",
+		}
+	}
+
+	#[must_use]
+	/// # Length.
+	///
+	/// Return the string length of the conjunction.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use oxford_join::Conjunction;
+	///
+	/// for i in [
+	///	    Conjunction::Ampersand, Conjunction::And,
+	///	    Conjunction::AndOr, Conjunction::Nor,
+	///	    Conjunction::Or, Conjunction::Plus
+	/// ] {
+	///     assert_eq!(i.as_str().len(), i.len());
+	/// }
+	/// ```
+	pub const fn len(&self) -> usize {
+		match self {
+			Self::And | Self::Nor => 3,
+			Self::Or => 2,
+			Self::Ampersand | Self::Plus => 1,
+			Self::AndOr => 6,
+			Self::Other(s) => s.len(),
 		}
 	}
 }
@@ -169,7 +200,7 @@ impl Conjunction<'_> {
 ///
 /// The return formatting depends on the size of the set:
 ///
-/// ```ignore
+/// ```ignore,text
 /// "" // Zero.
 /// "first" // One.
 /// "first <CONJUNCTION> last" // Two.
@@ -265,8 +296,13 @@ macro_rules! join_slice {
 					1 => Cow::Borrowed(self[0].as_ref()),
 					2 => Cow::Owned([self[0].as_ref(), " ", &glue, " ", self[1].as_ref()].concat()),
 					n => {
+						let len = glue.len() + 1 + n * 2_usize + self.iter()
+							.map(|x| x.as_ref().len())
+							.sum::<usize>();
+
 						let mut base: String = self[..n - 1].iter().fold(
-							String::new(), |mut out, s| {
+							String::with_capacity(len),
+							|mut out, s| {
 								out.push_str(s.as_ref());
 								out.push_str(", ");
 								out
@@ -310,8 +346,12 @@ macro_rules! join_arrays {
 		impl<T> OxfordJoin for [T; $num] where T: AsRef<str> {
 			/// # Oxford Join.
 			fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
+				let len = glue.len() + 1 + $num * 2_usize + self.iter()
+					.map(|x| x.as_ref().len())
+					.sum::<usize>();
+
 				let mut base: String = self[..$num - 1].iter().fold(
-					String::new(),
+					String::with_capacity(len),
 					|mut out, s| {
 						out.push_str(s.as_ref());
 						out.push_str(", ");
