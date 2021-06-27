@@ -7,6 +7,7 @@ description = "Join string slices with Oxford Commas!"
 license = "WTFPL"
 repository = "https://github.com/Blobfolio/oxford_join"
 readme = "README.md"
+keywords = [ "join", "string", "list", "grammar" ]
 exclude = [
 	".github",
 	".gitignore",
