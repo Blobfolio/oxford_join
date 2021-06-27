@@ -1,12 +1,13 @@
 [package]
 name = "oxford_join"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Blobfolio, LLC. <hello@blobfolio.com>"]
 edition = "2018"
 description = "Join string slices with Oxford Commas!"
 license = "WTFPL"
 repository = "https://github.com/Blobfolio/oxford_join"
 readme = "README.md"
+keywords = [ "join", "string", "list", "grammar" ]
 exclude = [
 	".github",
 	".gitignore",
