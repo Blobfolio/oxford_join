@@ -50,7 +50,7 @@ Add `oxford_join` to your `dependencies` in `Cargo.toml`, like:
 
 ```
 [dependencies]
-oxford_join = "0.1.*"
+oxford_join = "0.2.*"
 ```
 
 
