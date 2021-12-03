@@ -17,6 +17,12 @@ exclude = [
 	"justfile",
 ]
 
+[package.metadata.bashman]
+name = "Oxford Join"
+bash-dir = "./"
+man-dir = "./"
+credits-dir = "./"
+
 [dev-dependencies]
 brunch = "0.2.*"
 
