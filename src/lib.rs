@@ -147,7 +147,6 @@ impl<'a> From<&'a str> for Conjunction<'a> {
 	fn from(src: &'a str) -> Self { Self::Other(src.trim()) }
 }
 
-#[allow(clippy::len_without_is_empty)] // They shouldn't ever be empty.
 impl Conjunction<'_> {
 	#[must_use]
 	/// # As Str.
@@ -190,6 +189,28 @@ impl Conjunction<'_> {
 			Self::Ampersand | Self::Plus => 1,
 			Self::AndOr => 6,
 			Self::Other(s) => s.len(),
+		}
+	}
+
+	#[must_use]
+	/// # Is Empty.
+	///
+	/// An empty conjunction makes no sense, but because `Conjunction::Other`
+	/// wraps arbitrary values, it is worth checking.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use oxford_join::Conjunction;
+	///
+	/// assert_eq!(Conjunction::And.is_empty(), false);
+	/// assert_eq!(Conjunction::Other("foo").is_empty(), false);
+	/// assert_eq!(Conjunction::Other("").is_empty(), true);
+	/// ```
+	pub const fn is_empty(&self) -> bool {
+		match self {
+			Self::Other(s) => s.is_empty(),
+			_ => false,
 		}
 	}
 }
