@@ -76,7 +76,7 @@ use std::{
 
 
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, Hash, PartialEq)]
 /// # Conjunction.
 ///
 /// This is the glue used to bind the last entry in an [`oxford_join`]ed set.
