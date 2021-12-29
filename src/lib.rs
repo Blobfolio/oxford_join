@@ -66,7 +66,10 @@ That's all, folks!
 #![warn(unused_import_braces)]
 
 use std::{
-	borrow::Cow,
+	borrow::{
+		Borrow,
+		Cow,
+	},
 	fmt,
 	ops::Deref,
 };
@@ -122,6 +125,11 @@ pub enum Conjunction<'a> {
 impl AsRef<str> for Conjunction<'_> {
 	#[inline]
 	fn as_ref(&self) -> &str { self.as_str() }
+}
+
+impl Borrow<str> for Conjunction<'_> {
+	#[inline]
+	fn borrow(&self) -> &str { self.as_str() }
 }
 
 impl Default for Conjunction<'_> {
