@@ -3,6 +3,7 @@
 [![Documentation](https://docs.rs/oxford_join/badge.svg)](https://docs.rs/oxford_join/)
 [![crates.io](https://img.shields.io/crates/v/oxford_join.svg)](https://crates.io/crates/oxford_join)
 [![Build Status](https://github.com/Blobfolio/oxford_join/workflows/Build/badge.svg)](https://github.com/Blobfolio/oxford_join/actions)
+[![Dependency Status](https://deps.rs/repo/github/blobfolio/oxford_join/status.svg)](https://deps.rs/repo/github/blobfolio/oxford_join)
 
 Join a slice of strings with [Oxford Commas](https://en.wikipedia.org/wiki/Serial_comma) inserted as necessary, using the `Conjunction` of your choice.
 
@@ -57,7 +58,7 @@ oxford_join = "0.2.*"
 
 ## License
 
-Copyright © 2021 [Blobfolio, LLC](https://blobfolio.com) &lt;hello@blobfolio.com&gt;
+Copyright © 2022 [Blobfolio, LLC](https://blobfolio.com) &lt;hello@blobfolio.com&gt;
 
 This work is free. You can redistribute it and/or modify it under the terms of the Do What The Fuck You Want To Public License, Version 2.
 

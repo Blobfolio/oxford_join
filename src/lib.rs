@@ -43,6 +43,8 @@ assert_eq!(set.oxford_or(), "Apples, Oranges, or Bananas");
 That's all, folks!
 */
 
+#![forbid(unsafe_code)]
+
 #![warn(clippy::filetype_is_file)]
 #![warn(clippy::integer_division)]
 #![warn(clippy::needless_borrow)]
@@ -64,14 +66,17 @@ That's all, folks!
 #![warn(unused_import_braces)]
 
 use std::{
-	borrow::Cow,
+	borrow::{
+		Borrow,
+		Cow,
+	},
 	fmt,
 	ops::Deref,
 };
 
 
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, Hash, PartialEq)]
 /// # Conjunction.
 ///
 /// This is the glue used to bind the last entry in an [`oxford_join`]ed set.
@@ -122,6 +127,11 @@ impl AsRef<str> for Conjunction<'_> {
 	fn as_ref(&self) -> &str { self.as_str() }
 }
 
+impl Borrow<str> for Conjunction<'_> {
+	#[inline]
+	fn borrow(&self) -> &str { self.as_str() }
+}
+
 impl Default for Conjunction<'_> {
 	#[inline]
 	fn default() -> Self { Self::And }
@@ -145,7 +155,6 @@ impl<'a> From<&'a str> for Conjunction<'a> {
 	fn from(src: &'a str) -> Self { Self::Other(src.trim()) }
 }
 
-#[allow(clippy::len_without_is_empty)] // They shouldn't ever be empty.
 impl Conjunction<'_> {
 	#[must_use]
 	/// # As Str.
@@ -188,6 +197,28 @@ impl Conjunction<'_> {
 			Self::Ampersand | Self::Plus => 1,
 			Self::AndOr => 6,
 			Self::Other(s) => s.len(),
+		}
+	}
+
+	#[must_use]
+	/// # Is Empty.
+	///
+	/// An empty conjunction makes no sense, but because `Conjunction::Other`
+	/// wraps arbitrary values, it is worth checking.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use oxford_join::Conjunction;
+	///
+	/// assert_eq!(Conjunction::And.is_empty(), false);
+	/// assert_eq!(Conjunction::Other("foo").is_empty(), false);
+	/// assert_eq!(Conjunction::Other("").is_empty(), true);
+	/// ```
+	pub const fn is_empty(&self) -> bool {
+		match self {
+			Self::Other(s) => s.is_empty(),
+			_ => false,
 		}
 	}
 }
