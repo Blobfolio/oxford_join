@@ -327,7 +327,7 @@ macro_rules! join_slice {
 					1 => Cow::Borrowed(self[0].as_ref()),
 					2 => Cow::Owned([self[0].as_ref(), " ", &glue, " ", self[1].as_ref()].concat()),
 					n => {
-						let len = glue.len() + 1 + n * 2_usize + self.iter()
+						let len = glue.len() + 1_usize + (n << 1) + self.iter()
 							.map(|x| x.as_ref().len())
 							.sum::<usize>();
 
@@ -377,7 +377,7 @@ macro_rules! join_arrays {
 		impl<T> OxfordJoin for [T; $num] where T: AsRef<str> {
 			/// # Oxford Join.
 			fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
-				let len = glue.len() + 1 + $num * 2_usize + self.iter()
+				let len = glue.len() + 1_usize + ($num << 1) + self.iter()
 					.map(|x| x.as_ref().len())
 					.sum::<usize>();
 
