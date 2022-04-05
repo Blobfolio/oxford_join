@@ -327,9 +327,7 @@ macro_rules! join_slice {
 					1 => Cow::Borrowed(self[0].as_ref()),
 					2 => Cow::Owned([self[0].as_ref(), " ", glue.as_str(), " ", self[1].as_ref()].concat()),
 					n => {
-						let len = glue.len() + 1_usize + (n << 1) + self.iter()
-							.map(|x| x.as_ref().len())
-							.sum::<usize>();
+						let len = glue.len() + 1_usize + (n << 1) + slice_len(&self);
 
 						let mut base: String = self.iter().take(n - 1).fold(
 							String::with_capacity(len),
@@ -377,8 +375,7 @@ macro_rules! join_arrays {
 		impl<T> OxfordJoin for [T; $num] where T: AsRef<str> {
 			/// # Oxford Join.
 			fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
-				let len = glue.len() + 1_usize + ($num << 1) + self.iter()
-					.map(|x| x.as_ref().len())
+				let len = glue.len() + 1_usize + ($num << 1) + slice_len(self.as_ref().len())
 					.sum::<usize>();
 
 				let mut base: String = self.iter().take($num - 1).fold(
@@ -397,10 +394,19 @@ macro_rules! join_arrays {
 		}
 	)+);
 }
+
 join_arrays!(
 	3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
 	23, 24, 25, 26, 27, 28, 29, 30, 31, 32
 );
+
+
+
+/// # Slice Length.
+fn slice_len<T>(src: &[T]) -> usize
+where T: AsRef<str> {
+	src.iter().map(|x| x.as_ref().len()).sum()
+}
 
 
 
