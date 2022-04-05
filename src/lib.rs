@@ -325,7 +325,7 @@ macro_rules! join_slice {
 				match self.len() {
 					0 => Cow::Borrowed(""),
 					1 => Cow::Borrowed(self[0].as_ref()),
-					2 => Cow::Owned([self[0].as_ref(), " ", &glue, " ", self[1].as_ref()].concat()),
+					2 => Cow::Owned([self[0].as_ref(), " ", glue.as_str(), " ", self[1].as_ref()].concat()),
 					n => {
 						let len = glue.len() + 1_usize + (n << 1) + self.iter()
 							.map(|x| x.as_ref().len())
@@ -339,7 +339,7 @@ macro_rules! join_slice {
 								out
 							}
 						);
-						base.push_str(&glue);
+						base.push_str(glue.as_str());
 						base.push(' ');
 						base.push_str(self[n - 1].as_ref());
 						Cow::Owned(base)
@@ -367,7 +367,7 @@ impl<T> OxfordJoin for [T; 2] where T: AsRef<str> {
 	///
 	/// This is a special case; it will always read "first <CONJUNCTION> last".
 	fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
-		Cow::Owned([self[0].as_ref(), " ", &glue, " ", self[1].as_ref()].concat())
+		Cow::Owned([self[0].as_ref(), " ", glue.as_str(), " ", self[1].as_ref()].concat())
 	}
 }
 
@@ -389,7 +389,7 @@ macro_rules! join_arrays {
 						out
 					}
 				);
-				base.push_str(&glue);
+				base.push_str(glue.as_str());
 				base.push(' ');
 				base.push_str(&self[$num - 1].as_ref());
 				Cow::Owned(base)
