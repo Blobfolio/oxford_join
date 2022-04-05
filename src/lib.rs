@@ -332,17 +332,17 @@ macro_rules! join_slice {
 					n => {
 						let len = glue.len() + 1_usize + (n << 1) + slice_len(&self);
 
-						let mut base: String = self.iter().take(n - 1).fold(
-							String::with_capacity(len),
-							|mut out, s| {
-								out.push_str(s.as_ref());
-								out.push_str(", ");
-								out
-							}
-						);
+						let mut base: String = String::with_capacity(len);
+						for s in self.iter().take(n - 1) {
+							base.push_str(s.as_ref());
+							base.push_str(", ");
+						}
+
 						base.push_str(glue.as_str());
 						base.push(' ');
+
 						base.push_str(self[n - 1].as_ref());
+
 						Cow::Owned(base)
 					},
 				}
@@ -378,20 +378,19 @@ macro_rules! join_arrays {
 		impl<T> OxfordJoin for [T; $num] where T: AsRef<str> {
 			/// # Oxford Join.
 			fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
-				let len = glue.len() + 1_usize + ($num << 1) + slice_len(self.as_ref().len())
-					.sum::<usize>();
+				let len = glue.len() + 1_usize + ($num << 1) + slice_len(self.as_slice());
 
-				let mut base: String = self.iter().take($num - 1).fold(
-					String::with_capacity(len),
-					|mut out, s| {
-						out.push_str(s.as_ref());
-						out.push_str(", ");
-						out
-					}
-				);
+				let mut base: String = String::with_capacity(len);
+				for s in self.iter().take($num - 1) {
+					base.push_str(s.as_ref());
+					base.push_str(", ");
+				}
+
 				base.push_str(glue.as_str());
 				base.push(' ');
-				base.push_str(&self[$num - 1].as_ref());
+
+				base.push_str(self[$num - 1].as_ref());
+
 				Cow::Owned(base)
 			}
 		}
