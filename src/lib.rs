@@ -243,6 +243,9 @@ impl Conjunction<'_> {
 /// ```
 /// use oxford_join::{Conjunction, OxfordJoin};
 ///
+/// let set = ["Apples"];
+/// assert_eq!(set.oxford_join(Conjunction::And), "Apples");
+///
 /// let set = ["Apples", "Oranges"];
 /// assert_eq!(set.oxford_join(Conjunction::And), "Apples and Oranges");
 ///
