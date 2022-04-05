@@ -331,7 +331,7 @@ macro_rules! join_slice {
 							.map(|x| x.as_ref().len())
 							.sum::<usize>();
 
-						let mut base: String = self[..n - 1].iter().fold(
+						let mut base: String = self.iter().take(n - 1).fold(
 							String::with_capacity(len),
 							|mut out, s| {
 								out.push_str(s.as_ref());
@@ -381,7 +381,7 @@ macro_rules! join_arrays {
 					.map(|x| x.as_ref().len())
 					.sum::<usize>();
 
-				let mut base: String = self[..$num - 1].iter().fold(
+				let mut base: String = self.iter().take($num - 1).fold(
 					String::with_capacity(len),
 					|mut out, s| {
 						out.push_str(s.as_ref());
