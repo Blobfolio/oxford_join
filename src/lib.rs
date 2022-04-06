@@ -43,8 +43,6 @@ assert_eq!(set.oxford_or(), "Apples, Oranges, or Bananas");
 That's all, folks!
 */
 
-#![forbid(unsafe_code)]
-
 #![warn(clippy::filetype_is_file)]
 #![warn(clippy::integer_division)]
 #![warn(clippy::needless_borrow)]
@@ -328,7 +326,7 @@ macro_rules! join_slice {
 				match self.len() {
 					0 => Cow::Borrowed(""),
 					1 => Cow::Borrowed(self[0].as_ref()),
-					2 => Cow::Owned([self[0].as_ref(), " ", glue.as_str(), " ", self[1].as_ref()].concat()),
+					2 => Cow::Owned(join_two(self[0].as_ref(), self[1].as_ref(), glue)),
 					n => {
 						let glue = glue.as_str();
 				let len = glue.len() + 1 + ((n - 1) << 1) + slice_len(self);
@@ -369,7 +367,7 @@ impl<T> OxfordJoin for [T; 2] where T: AsRef<str> {
 	///
 	/// This is a special case; it will always read "first <CONJUNCTION> last".
 	fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
-		Cow::Owned([self[0].as_ref(), " ", glue.as_str(), " ", self[1].as_ref()].concat())
+		Cow::Owned(join_two(self[0].as_ref(), self[1].as_ref(), glue))
 	}
 }
 
@@ -409,6 +407,23 @@ join_arrays!(
 fn slice_len<T>(src: &[T]) -> usize
 where T: AsRef<str> {
 	src.iter().map(|x| x.as_ref().len()).sum()
+}
+
+/// # Join Two.
+fn join_two(a: &str, b: &str, glue: Conjunction) -> String {
+	let a = a.as_bytes();
+	let b = b.as_bytes();
+	let glue = glue.as_str().as_bytes();
+
+	let mut v: Vec<u8> = Vec::with_capacity(a.len() + b.len() + 2 + glue.len());
+	v.extend_from_slice(a);
+	v.push(b' ');
+	v.extend_from_slice(glue);
+	v.push(b' ');
+	v.extend_from_slice(b);
+
+	// Safety: all inputs were valid UTF-8, so the output is too.
+	unsafe { String::from_utf8_unchecked(v) }
 }
 
 
