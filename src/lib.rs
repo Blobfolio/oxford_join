@@ -330,7 +330,8 @@ macro_rules! join_slice {
 					1 => Cow::Borrowed(self[0].as_ref()),
 					2 => Cow::Owned([self[0].as_ref(), " ", glue.as_str(), " ", self[1].as_ref()].concat()),
 					n => {
-						let len = glue.len() + 1_usize + (n << 1) + slice_len(&self);
+						let glue = glue.as_str();
+				let len = glue.len() + 1 + ((n - 1) << 1) + slice_len(self);
 
 						let mut base: String = String::with_capacity(len);
 						for s in self.iter().take(n - 1) {
