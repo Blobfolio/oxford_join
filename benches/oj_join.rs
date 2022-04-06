@@ -7,6 +7,7 @@ use brunch::{
 	benches,
 };
 use oxford_join::OxfordJoin;
+use std::time::Duration;
 
 
 
@@ -20,17 +21,22 @@ const SLICE: &[&str] = &["Apples", "Bananas", "Oranges", "Pears", "Jackfruit"];
 
 benches!(
 	Bench::new("oxford_and", "([T; 1])")
+		.timed(Duration::from_secs(1))
 		.with(|| ONE.oxford_and()),
 
 	Bench::new("oxford_and", "([T; 2])")
+		.timed(Duration::from_secs(1))
 		.with(|| TWO.oxford_and()),
 
 	Bench::new("oxford_and", "([T; 3])")
+		.timed(Duration::from_secs(1))
 		.with(|| THREE.oxford_and()),
 
 	Bench::new("oxford_and", "([T; 5])")
+		.timed(Duration::from_secs(1))
 		.with(|| FIVE.oxford_and()),
 
 	Bench::new("oxford_and", "(&[T])")
+		.timed(Duration::from_secs(1))
 		.with(|| SLICE.oxford_and())
 );

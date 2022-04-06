@@ -43,8 +43,6 @@ assert_eq!(set.oxford_or(), "Apples, Oranges, or Bananas");
 That's all, folks!
 */
 
-#![forbid(unsafe_code)]
-
 #![warn(clippy::filetype_is_file)]
 #![warn(clippy::integer_division)]
 #![warn(clippy::needless_borrow)]
@@ -243,6 +241,9 @@ impl Conjunction<'_> {
 /// ```
 /// use oxford_join::{Conjunction, OxfordJoin};
 ///
+/// let set = ["Apples"];
+/// assert_eq!(set.oxford_join(Conjunction::And), "Apples");
+///
 /// let set = ["Apples", "Oranges"];
 /// assert_eq!(set.oxford_join(Conjunction::And), "Apples and Oranges");
 ///
@@ -316,40 +317,34 @@ pub trait OxfordJoin {
 	fn oxford_or(&self) -> Cow<str> { self.oxford_join(Conjunction::Or) }
 }
 
-/// # Join Slices.
-macro_rules! join_slice {
-	($($wrapper:ty),+) => ($(
-		impl<T> OxfordJoin for $wrapper where T: AsRef<str> {
-			/// # Oxford Join.
-			fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
-				match self.len() {
-					0 => Cow::Borrowed(""),
-					1 => Cow::Borrowed(self[0].as_ref()),
-					2 => Cow::Owned([self[0].as_ref(), " ", &glue, " ", self[1].as_ref()].concat()),
-					n => {
-						let len = glue.len() + 1 + n * 2_usize + self.iter()
-							.map(|x| x.as_ref().len())
-							.sum::<usize>();
+impl<T> OxfordJoin for [T] where T: AsRef<str> {
+	/// # Oxford Join.
+	fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
+		match self.len() {
+			0 => Cow::Borrowed(""),
+			1 => Cow::Borrowed(self[0].as_ref()),
+			2 => Cow::Owned(join_two(self[0].as_ref(), self[1].as_ref(), glue)),
+			n => {
+				let glue = glue.as_str();
+				let len = glue.len() + 1 + ((n - 1) << 1) + slice_len(self);
 
-						let mut base: String = self[..n - 1].iter().fold(
-							String::with_capacity(len),
-							|mut out, s| {
-								out.push_str(s.as_ref());
-								out.push_str(", ");
-								out
-							}
-						);
-						base.push_str(&glue);
-						base.push(' ');
-						base.push_str(self[n - 1].as_ref());
-						Cow::Owned(base)
-					},
+				let (last, rest) = self.split_last().unwrap();
+				let mut base: String = String::with_capacity(len);
+				for s in rest {
+					base.push_str(s.as_ref());
+					base.push_str(", ");
 				}
-			}
+
+				base.push_str(glue);
+				base.push(' ');
+
+				base.push_str(last.as_ref());
+
+				Cow::Owned(base)
+			},
 		}
-	)+);
+	}
 }
-join_slice!([T], Vec<T>, Box<[T]>);
 
 impl<T> OxfordJoin for [T; 1] where T: AsRef<str> {
 	#[inline]
@@ -367,42 +362,132 @@ impl<T> OxfordJoin for [T; 2] where T: AsRef<str> {
 	///
 	/// This is a special case; it will always read "first <CONJUNCTION> last".
 	fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
-		Cow::Owned([self[0].as_ref(), " ", &glue, " ", self[1].as_ref()].concat())
+		Cow::Owned(join_two(self[0].as_ref(), self[1].as_ref(), glue))
 	}
 }
 
 /// # Join Arrays.
 macro_rules! join_arrays {
-	($($num:literal),+) => ($(
+	($($num:literal $pad:literal $last:literal),+ $(,)?) => ($(
 		impl<T> OxfordJoin for [T; $num] where T: AsRef<str> {
 			/// # Oxford Join.
 			fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
-				let len = glue.len() + 1 + $num * 2_usize + self.iter()
-					.map(|x| x.as_ref().len())
-					.sum::<usize>();
+				let glue = glue.as_str();
+				let len = glue.len() + $pad + slice_len(self.as_slice());
 
-				let mut base: String = self[..$num - 1].iter().fold(
-					String::with_capacity(len),
-					|mut out, s| {
-						out.push_str(s.as_ref());
-						out.push_str(", ");
-						out
-					}
-				);
-				base.push_str(&glue);
+				let mut base: String = String::with_capacity(len);
+				for s in self.iter().take($last) {
+					base.push_str(s.as_ref());
+					base.push_str(", ");
+				}
+
+				base.push_str(glue);
 				base.push(' ');
-				base.push_str(&self[$num - 1].as_ref());
+
+				base.push_str(self[$last].as_ref());
+
 				Cow::Owned(base)
 			}
 		}
 	)+);
 }
+
 join_arrays!(
-	3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
-	23, 24, 25, 26, 27, 28, 29, 30, 31, 32
+	3 5 2,
+	4 7 3,
+	5 9 4,
+	6 11 5,
+	7 13 6,
+	8 15 7,
+	9 17 8,
+	10 19 9,
+	11 21 10,
+	12 23 11,
+	13 25 12,
+	14 27 13,
+	15 29 14,
+	16 31 15,
+	17 33 16,
+	18 35 17,
+	19 37 18,
+	20 39 19,
+	21 41 20,
+	22 43 21,
+	23 45 22,
+	24 47 23,
+	25 49 24,
+	26 51 25,
+	27 53 26,
+	28 55 27,
+	29 57 28,
+	30 59 29,
+	31 61 30,
+	32 63 31,
 );
 
 
 
+/// # Slice Length.
+fn slice_len<T>(src: &[T]) -> usize
+where T: AsRef<str> {
+	src.iter().map(|x| x.as_ref().len()).sum()
+}
+
+/// # Join Two.
+fn join_two(a: &str, b: &str, glue: Conjunction) -> String {
+	let a = a.as_bytes();
+	let b = b.as_bytes();
+	let glue = glue.as_str().as_bytes();
+
+	let mut v: Vec<u8> = Vec::with_capacity(a.len() + b.len() + 2 + glue.len());
+	v.extend_from_slice(a);
+	v.push(b' ');
+	v.extend_from_slice(glue);
+	v.push(b' ');
+	v.extend_from_slice(b);
+
+	// Safety: all inputs were valid UTF-8, so the output is too.
+	unsafe { String::from_utf8_unchecked(v) }
+}
+
+
+
 #[cfg(test)]
-mod tests { use brunch as _; }
+mod tests {
+	use super::*;
+	use brunch as _;
+
+	#[test]
+	fn t_fruit() {
+		// Make sure arrays, slices, vecs, and boxes are treated equally.
+		macro_rules! compare {
+			($($arr:ident, $expected:literal),+ $(,)?) => ($(
+				assert_eq!($arr.oxford_and(), $expected);
+				assert_eq!($arr.as_slice().oxford_and(), $expected);
+				let (v, b) = two_ways($arr.as_slice());
+				assert_eq!(v.oxford_and(), $expected);
+				assert_eq!(b.oxford_and(), $expected);
+			)+);
+		}
+
+		let arr1: [&str; 1] = ["Apples"];
+		let arr2: [&str; 2] = ["Apples", "Bananas"];
+		let arr3: [&str; 3] = ["Apples", "Bananas", "Carrots"];
+		let arr4: [&str; 4] = ["Apples", "Bananas", "Carrots", "Dates"];
+		let arr5: [&str; 5] = ["Apples", "Bananas", "Carrots", "Dates", "Eggplant"];
+
+		compare!(
+			arr1, "Apples",
+			arr2, "Apples and Bananas",
+			arr3, "Apples, Bananas, and Carrots",
+			arr4, "Apples, Bananas, Carrots, and Dates",
+			arr5, "Apples, Bananas, Carrots, Dates, and Eggplant",
+		);
+	}
+
+	fn two_ways<'a>(src: &'a [&'a str]) -> (Vec<&'a str>, Box<[&'a str]>) {
+		let v = src.to_vec();
+		let b = Box::from(src);
+		(v, b)
+	}
+}
