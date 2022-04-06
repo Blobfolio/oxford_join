@@ -453,4 +453,41 @@ fn join_two(a: &str, b: &str, glue: Conjunction) -> String {
 
 
 #[cfg(test)]
-mod tests { use brunch as _; }
+mod tests {
+	use super::*;
+	use brunch as _;
+
+	#[test]
+	fn t_fruit() {
+		// Make sure arrays, slices, vecs, and boxes are treated equally.
+		macro_rules! compare {
+			($($arr:ident, $expected:literal),+ $(,)?) => ($(
+				assert_eq!($arr.oxford_and(), $expected);
+				assert_eq!($arr.as_slice().oxford_and(), $expected);
+				let (v, b) = two_ways($arr.as_slice());
+				assert_eq!(v.oxford_and(), $expected);
+				assert_eq!(b.oxford_and(), $expected);
+			)+);
+		}
+
+		let arr1: [&str; 1] = ["Apples"];
+		let arr2: [&str; 2] = ["Apples", "Bananas"];
+		let arr3: [&str; 3] = ["Apples", "Bananas", "Carrots"];
+		let arr4: [&str; 4] = ["Apples", "Bananas", "Carrots", "Dates"];
+		let arr5: [&str; 5] = ["Apples", "Bananas", "Carrots", "Dates", "Eggplant"];
+
+		compare!(
+			arr1, "Apples",
+			arr2, "Apples and Bananas",
+			arr3, "Apples, Bananas, and Carrots",
+			arr4, "Apples, Bananas, Carrots, and Dates",
+			arr5, "Apples, Bananas, Carrots, Dates, and Eggplant",
+		);
+	}
+
+	fn two_ways<'a>(src: &'a [&'a str]) -> (Vec<&'a str>, Box<[&'a str]>) {
+		let v = src.to_vec();
+		let b = Box::from(src);
+		(v, b)
+	}
+}
