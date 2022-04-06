@@ -317,39 +317,34 @@ pub trait OxfordJoin {
 	fn oxford_or(&self) -> Cow<str> { self.oxford_join(Conjunction::Or) }
 }
 
-/// # Join Slices.
-macro_rules! join_slice {
-	($($wrapper:ty),+) => ($(
-		impl<T> OxfordJoin for $wrapper where T: AsRef<str> {
-			/// # Oxford Join.
-			fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
-				match self.len() {
-					0 => Cow::Borrowed(""),
-					1 => Cow::Borrowed(self[0].as_ref()),
-					2 => Cow::Owned(join_two(self[0].as_ref(), self[1].as_ref(), glue)),
-					n => {
-						let glue = glue.as_str();
+impl<T> OxfordJoin for [T] where T: AsRef<str> {
+	/// # Oxford Join.
+	fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
+		match self.len() {
+			0 => Cow::Borrowed(""),
+			1 => Cow::Borrowed(self[0].as_ref()),
+			2 => Cow::Owned(join_two(self[0].as_ref(), self[1].as_ref(), glue)),
+			n => {
+				let glue = glue.as_str();
 				let len = glue.len() + 1 + ((n - 1) << 1) + slice_len(self);
 
-						let mut base: String = String::with_capacity(len);
-						for s in self.iter().take(n - 1) {
-							base.push_str(s.as_ref());
-							base.push_str(", ");
-						}
-
-						base.push_str(glue.as_str());
-						base.push(' ');
-
-						base.push_str(self[n - 1].as_ref());
-
-						Cow::Owned(base)
-					},
+				let (last, rest) = self.split_last().unwrap();
+				let mut base: String = String::with_capacity(len);
+				for s in rest {
+					base.push_str(s.as_ref());
+					base.push_str(", ");
 				}
-			}
+
+				base.push_str(glue);
+				base.push(' ');
+
+				base.push_str(last.as_ref());
+
+				Cow::Owned(base)
+			},
 		}
-	)+);
+	}
 }
-join_slice!([T], Vec<T>, Box<[T]>);
 
 impl<T> OxfordJoin for [T; 1] where T: AsRef<str> {
 	#[inline]
