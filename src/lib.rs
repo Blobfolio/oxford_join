@@ -368,22 +368,23 @@ impl<T> OxfordJoin for [T; 2] where T: AsRef<str> {
 
 /// # Join Arrays.
 macro_rules! join_arrays {
-	($($num:literal),+) => ($(
+	($($num:literal $pad:literal $last:literal),+ $(,)?) => ($(
 		impl<T> OxfordJoin for [T; $num] where T: AsRef<str> {
 			/// # Oxford Join.
 			fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
-				let len = glue.len() + 1_usize + ($num << 1) + slice_len(self.as_slice());
+				let glue = glue.as_str();
+				let len = glue.len() + $pad + slice_len(self.as_slice());
 
 				let mut base: String = String::with_capacity(len);
-				for s in self.iter().take($num - 1) {
+				for s in self.iter().take($last) {
 					base.push_str(s.as_ref());
 					base.push_str(", ");
 				}
 
-				base.push_str(glue.as_str());
+				base.push_str(glue);
 				base.push(' ');
 
-				base.push_str(self[$num - 1].as_ref());
+				base.push_str(self[$last].as_ref());
 
 				Cow::Owned(base)
 			}
@@ -392,8 +393,36 @@ macro_rules! join_arrays {
 }
 
 join_arrays!(
-	3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
-	23, 24, 25, 26, 27, 28, 29, 30, 31, 32
+	3 5 2,
+	4 7 3,
+	5 9 4,
+	6 11 5,
+	7 13 6,
+	8 15 7,
+	9 17 8,
+	10 19 9,
+	11 21 10,
+	12 23 11,
+	13 25 12,
+	14 27 13,
+	15 29 14,
+	16 31 15,
+	17 33 16,
+	18 35 17,
+	19 37 18,
+	20 39 19,
+	21 41 20,
+	22 43 21,
+	23 45 22,
+	24 47 23,
+	25 49 24,
+	26 51 25,
+	27 53 26,
+	28 55 27,
+	29 57 28,
+	30 59 29,
+	31 61 30,
+	32 63 31,
 );
 
 
