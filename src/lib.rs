@@ -40,6 +40,16 @@ assert_eq!(set.oxford_nor(), "Apples, Oranges, nor Bananas");
 assert_eq!(set.oxford_or(), "Apples, Oranges, or Bananas");
 ```
 
+## `no_std`
+
+To use Oxford Join in `no_std` contexts (with `alloc`), just disable the default `std` feature like:
+
+```ignore,toml
+[dependencies.oxford_join]
+version = "0.2"
+default-features = false
+```
+
 That's all, folks!
 */
 
@@ -63,6 +73,26 @@ That's all, folks!
 #![warn(unused_extern_crates)]
 #![warn(unused_import_braces)]
 
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+
+#[cfg(not(feature = "std"))]
+use alloc::{
+	borrow::Cow,
+	string::String,
+	vec::Vec,
+};
+
+#[cfg(not(feature = "std"))]
+use core::{
+	borrow::Borrow,
+	fmt,
+	ops::Deref,
+};
+
+#[cfg(feature = "std")]
 use std::{
 	borrow::{
 		Borrow,
@@ -456,6 +486,9 @@ fn join_two(a: &str, b: &str, glue: Conjunction) -> String {
 mod tests {
 	use super::*;
 	use brunch as _;
+
+	#[cfg(not(feature = "std"))]
+	use alloc::boxed::Box;
 
 	#[test]
 	fn t_fruit() {

@@ -49,9 +49,21 @@ That's all, folks!
 
 Add `oxford_join` to your `dependencies` in `Cargo.toml`, like:
 
-```
+```toml
 [dependencies]
 oxford_join = "0.2.*"
+```
+
+
+
+## `no_std`
+
+To use Oxford Join in `no_std` contexts (with `alloc`), just disable the default `std` feature like:
+
+```toml
+[dependencies.oxford_join]
+version = "0.2"
+default-features = false
 ```
 
 

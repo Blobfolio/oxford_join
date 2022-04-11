@@ -31,13 +31,11 @@ bench BENCH="":
 	if [ -z "{{ BENCH }}" ]; then
 		cargo bench \
 			--benches \
-			--all-features \
 			--target x86_64-unknown-linux-gnu \
 			--target-dir "{{ cargo_dir }}"
 	else
 		cargo bench \
 			--bench "{{ BENCH }}" \
-			--all-features \
 			--target x86_64-unknown-linux-gnu \
 			--target-dir "{{ cargo_dir }}"
 	fi
@@ -50,7 +48,6 @@ bench BENCH="":
 	cargo check \
 		--release \
 		--target x86_64-unknown-linux-gnu \
-		--all-features \
 		--target-dir "{{ cargo_dir }}"
 
 
@@ -71,7 +68,6 @@ bench BENCH="":
 	clear
 	cargo clippy \
 		--release \
-		--all-features \
 		--target x86_64-unknown-linux-gnu \
 		--target-dir "{{ cargo_dir }}"
 
@@ -103,9 +99,16 @@ bench BENCH="":
 # Unit tests!
 @test:
 	clear
+	fyi notice "Testing default features."
 	cargo test \
 		--release \
-		--all-features \
+		--target x86_64-unknown-linux-gnu \
+		--target-dir "{{ cargo_dir }}"
+
+	fyi notice "Testing no_std."
+	cargo test \
+		--release \
+		--no-default-features \
 		--target x86_64-unknown-linux-gnu \
 		--target-dir "{{ cargo_dir }}"
 

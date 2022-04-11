@@ -26,6 +26,11 @@ credits-dir = "./"
 [dev-dependencies]
 brunch = "0.2.*"
 
+[features]
+default = [ "std" ]
+std = []
+
 [[bench]]
 name = "oj_join"
 harness = false
+required-features = [ "std" ]
