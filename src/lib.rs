@@ -53,25 +53,29 @@ default-features = false
 That's all, folks!
 */
 
-#![warn(clippy::filetype_is_file)]
-#![warn(clippy::integer_division)]
-#![warn(clippy::needless_borrow)]
-#![warn(clippy::nursery)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::perf)]
-#![warn(clippy::suboptimal_flops)]
-#![warn(clippy::unneeded_field_pattern)]
-#![warn(macro_use_extern_crate)]
-#![warn(missing_copy_implementations)]
-#![warn(missing_debug_implementations)]
-#![warn(missing_docs)]
-#![warn(non_ascii_idents)]
-#![warn(trivial_casts)]
-#![warn(trivial_numeric_casts)]
-#![warn(unreachable_pub)]
-#![warn(unused_crate_dependencies)]
-#![warn(unused_extern_crates)]
-#![warn(unused_import_braces)]
+#![deny(unsafe_code)]
+
+#![warn(
+	clippy::filetype_is_file,
+	clippy::integer_division,
+	clippy::needless_borrow,
+	clippy::nursery,
+	clippy::pedantic,
+	clippy::perf,
+	clippy::suboptimal_flops,
+	clippy::unneeded_field_pattern,
+	macro_use_extern_crate,
+	missing_copy_implementations,
+	missing_debug_implementations,
+	missing_docs,
+	non_ascii_idents,
+	trivial_casts,
+	trivial_numeric_casts,
+	unreachable_pub,
+	unused_crate_dependencies,
+	unused_extern_crates,
+	unused_import_braces,
+)]
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -463,6 +467,7 @@ where T: AsRef<str> {
 	src.iter().map(|x| x.as_ref().len()).sum()
 }
 
+#[allow(unsafe_code)]
 /// # Join Two.
 fn join_two(a: &str, b: &str, glue: Conjunction) -> String {
 	let a = a.as_bytes();
