@@ -18,6 +18,8 @@ The return formatting depends on the size of the set:
 n: "first, second, …, <CONJUNCTION> last"
 ```
 
+This crate is `#![no_std]`-compatible.
+
 ## Examples
 
 The magic is accomplished with the `OxfordJoin` trait. Import that, and most
@@ -49,7 +51,7 @@ That's all, folks!
 
 Add `oxford_join` to your `dependencies` in `Cargo.toml`, like:
 
-```
+```toml
 [dependencies]
 oxford_join = "0.2.*"
 ```
