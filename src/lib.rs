@@ -17,6 +17,8 @@ The return formatting depends on the size of the set:
 n: "first, second, …, <CONJUNCTION> last"
 ```
 
+This crate is `#![no_std]`-compatible.
+
 ## Examples
 
 The magic is accomplished with the [`OxfordJoin`] trait. Import that, and most
@@ -38,16 +40,6 @@ assert_eq!(set.oxford_and(), "Apples, Oranges, and Bananas");
 assert_eq!(set.oxford_and_or(), "Apples, Oranges, and/or Bananas");
 assert_eq!(set.oxford_nor(), "Apples, Oranges, nor Bananas");
 assert_eq!(set.oxford_or(), "Apples, Oranges, or Bananas");
-```
-
-## `no_std`
-
-To use Oxford Join in `no_std` contexts (with `alloc`), just disable the default `std` feature like:
-
-```ignore,toml
-[dependencies.oxford_join]
-version = "0.2"
-default-features = false
 ```
 
 That's all, folks!
@@ -77,31 +69,17 @@ That's all, folks!
 	unused_import_braces,
 )]
 
-#![cfg_attr(not(feature = "std"), no_std)]
+#![no_std]
 
-#[cfg(not(feature = "std"))]
 extern crate alloc;
 
-#[cfg(not(feature = "std"))]
 use alloc::{
 	borrow::Cow,
 	string::String,
 	vec::Vec,
 };
-
-#[cfg(not(feature = "std"))]
 use core::{
 	borrow::Borrow,
-	fmt,
-	ops::Deref,
-};
-
-#[cfg(feature = "std")]
-use std::{
-	borrow::{
-		Borrow,
-		Cow,
-	},
 	fmt,
 	ops::Deref,
 };
@@ -490,10 +468,8 @@ fn join_two(a: &str, b: &str, glue: Conjunction) -> String {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use brunch as _;
-
-	#[cfg(not(feature = "std"))]
 	use alloc::boxed::Box;
+	use brunch as _;
 
 	#[test]
 	fn t_fruit() {

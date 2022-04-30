@@ -99,16 +99,8 @@ bench BENCH="":
 # Unit tests!
 @test:
 	clear
-	fyi notice "Testing default features."
 	cargo test \
 		--release \
-		--target x86_64-unknown-linux-gnu \
-		--target-dir "{{ cargo_dir }}"
-
-	fyi notice "Testing no_std."
-	cargo test \
-		--release \
-		--no-default-features \
 		--target x86_64-unknown-linux-gnu \
 		--target-dir "{{ cargo_dir }}"
 

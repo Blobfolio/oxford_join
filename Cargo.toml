@@ -9,6 +9,7 @@ license = "WTFPL"
 repository = "https://github.com/Blobfolio/oxford_join"
 readme = "README.md"
 keywords = [ "join", "string", "list", "grammar" ]
+categories = [ "no-std" ]
 exclude = [
 	".github",
 	".gitignore",
@@ -26,11 +27,6 @@ credits-dir = "./"
 [dev-dependencies]
 brunch = "0.2.*"
 
-[features]
-default = [ "std" ]
-std = []
-
 [[bench]]
 name = "oj_join"
 harness = false
-required-features = [ "std" ]
