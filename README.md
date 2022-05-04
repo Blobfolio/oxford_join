@@ -4,6 +4,7 @@
 [![crates.io](https://img.shields.io/crates/v/oxford_join.svg)](https://crates.io/crates/oxford_join)
 [![Build Status](https://github.com/Blobfolio/oxford_join/workflows/Build/badge.svg)](https://github.com/Blobfolio/oxford_join/actions)
 [![Dependency Status](https://deps.rs/repo/github/blobfolio/oxford_join/status.svg)](https://deps.rs/repo/github/blobfolio/oxford_join)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](https://github.com/Blobfolio/oxford_join)
 
 Join a slice of strings with [Oxford Commas](https://en.wikipedia.org/wiki/Serial_comma) inserted as necessary, using the `Conjunction` of your choice.
 
