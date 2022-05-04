@@ -2,6 +2,8 @@
 
 ## [0.2.3](https://github.com/Blobfolio/oxford_join/releases/tag/v0.2.3) - 2022-04-30
 
+### Changed
+
 * Make crate `#![no_std]` w/o any feature gates
 
 
