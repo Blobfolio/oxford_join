@@ -87,7 +87,7 @@ use core::{
 
 
 
-#[derive(Debug, Copy, Clone, Eq, Hash, PartialEq)]
+#[derive(Debug, Copy, Clone, Default, Eq, Hash, PartialEq)]
 /// # Conjunction.
 ///
 /// This is the glue used to bind the last entry in an [`oxford_join`]ed set.
@@ -114,6 +114,7 @@ pub enum Conjunction<'a> {
 	/// # Ampersand (&).
 	Ampersand,
 
+	#[default]
 	/// # And.
 	And,
 
@@ -141,11 +142,6 @@ impl AsRef<str> for Conjunction<'_> {
 impl Borrow<str> for Conjunction<'_> {
 	#[inline]
 	fn borrow(&self) -> &str { self.as_str() }
-}
-
-impl Default for Conjunction<'_> {
-	#[inline]
-	fn default() -> Self { Self::And }
 }
 
 impl Deref for Conjunction<'_> {
