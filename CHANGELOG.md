@@ -1,5 +1,14 @@
 # Changelog
 
+
+## [0.2.4](https://github.com/Blobfolio/oxford_join/releases/tag/v0.2.4) - TBD
+
+### Changed
+
+* Bump MSRV 1.62
+
+
+
 ## [0.2.3](https://github.com/Blobfolio/oxford_join/releases/tag/v0.2.3) - 2022-04-30
 
 ### Changed
