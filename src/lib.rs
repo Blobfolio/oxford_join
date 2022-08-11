@@ -3,6 +3,7 @@
 
 [![Documentation](https://docs.rs/oxford_join/badge.svg)](https://docs.rs/oxford_join/)
 [![crates.io](https://img.shields.io/crates/v/oxford_join.svg)](https://crates.io/crates/oxford_join)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](https://github.com/Blobfolio/oxford_join)
 
 Join a slice of strings with [Oxford Commas](https://en.wikipedia.org/wiki/Serial_comma) inserted as necessary, using the [`Conjunction`] of your choice.
 
@@ -86,7 +87,7 @@ use core::{
 
 
 
-#[derive(Debug, Copy, Clone, Eq, Hash, PartialEq)]
+#[derive(Debug, Copy, Clone, Default, Eq, Hash, PartialEq)]
 /// # Conjunction.
 ///
 /// This is the glue used to bind the last entry in an [`oxford_join`]ed set.
@@ -113,6 +114,7 @@ pub enum Conjunction<'a> {
 	/// # Ampersand (&).
 	Ampersand,
 
+	#[default]
 	/// # And.
 	And,
 
@@ -140,11 +142,6 @@ impl AsRef<str> for Conjunction<'_> {
 impl Borrow<str> for Conjunction<'_> {
 	#[inline]
 	fn borrow(&self) -> &str { self.as_str() }
-}
-
-impl Default for Conjunction<'_> {
-	#[inline]
-	fn default() -> Self { Self::And }
 }
 
 impl Deref for Conjunction<'_> {
