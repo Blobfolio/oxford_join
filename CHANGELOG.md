@@ -1,7 +1,7 @@
 # Changelog
 
 
-## [0.2.4](https://github.com/Blobfolio/oxford_join/releases/tag/v0.2.4) - TBD
+## [0.2.4](https://github.com/Blobfolio/oxford_join/releases/tag/v0.2.4) - 2022-08-11
 
 ### Changed
 
