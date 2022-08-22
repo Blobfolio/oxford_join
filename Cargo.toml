@@ -25,7 +25,7 @@ man-dir = "./"
 credits-dir = "./"
 
 [dev-dependencies]
-brunch = "0.2.*"
+brunch = "0.3.*"
 
 [[bench]]
 name = "oj_join"
