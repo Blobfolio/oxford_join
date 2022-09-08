@@ -496,7 +496,23 @@ mod tests {
 		);
 	}
 
-	fn two_ways<'a>(src: &'a [&'a str]) -> (Vec<&'a str>, Box<[&'a str]>) {
+	#[test]
+	fn conjunction_len() {
+		for c in [
+			Conjunction::Ampersand,
+			Conjunction::And,
+			Conjunction::AndOr,
+			Conjunction::Nor,
+			Conjunction::Or,
+			Conjunction::Other("Hello World"),
+			Conjunction::Plus,
+		] {
+			assert_eq!(c.len(), c.as_str().len());
+			assert!(! c.is_empty());
+		}
+
+		assert!(Conjunction::Other("").is_empty());
+	}	fn two_ways<'a>(src: &'a [&'a str]) -> (Vec<&'a str>, Box<[&'a str]>) {
 		let v = src.to_vec();
 		let b = Box::from(src);
 		(v, b)
