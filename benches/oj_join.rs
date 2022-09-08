@@ -19,18 +19,20 @@ const SLICE: &[&str] = &["Apples", "Bananas", "Oranges", "Pears", "Jackfruit"];
 
 
 benches!(
-	Bench::new("oxford_and([T; 1])")
+	Bench::new("<[T; 1]>::oxford_and()")
 		.run(|| ONE.oxford_and()),
 
-	Bench::new("oxford_and([T; 2])")
+	Bench::new("<[T; 2]>::oxford_and()")
 		.run(|| TWO.oxford_and()),
 
-	Bench::new("oxford_and([T; 3])")
+	Bench::new("<[T; 3]>::oxford_and()")
 		.run(|| THREE.oxford_and()),
 
-	Bench::new("oxford_and([T; 5])")
+	Bench::new("<[T; 5]>::oxford_and()")
 		.run(|| FIVE.oxford_and()),
 
-	Bench::new("oxford_and(&[T])")
-		.run(|| SLICE.oxford_and())
+	Bench::spacer(),
+
+	Bench::new("<&[T]>::oxford_and()")
+		.run(|| SLICE.oxford_and()),
 );

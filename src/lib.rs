@@ -183,20 +183,6 @@ impl Conjunction<'_> {
 	/// # Length.
 	///
 	/// Return the string length of the conjunction.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use oxford_join::Conjunction;
-	///
-	/// for i in [
-	///     Conjunction::Ampersand, Conjunction::And,
-	///     Conjunction::AndOr, Conjunction::Nor,
-	///     Conjunction::Or, Conjunction::Plus
-	/// ] {
-	///     assert_eq!(i.as_str().len(), i.len());
-	/// }
-	/// ```
 	pub const fn len(&self) -> usize {
 		match self {
 			Self::And | Self::Nor => 3,
@@ -212,21 +198,62 @@ impl Conjunction<'_> {
 	///
 	/// An empty conjunction makes no sense, but because `Conjunction::Other`
 	/// wraps arbitrary values, it is worth checking.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use oxford_join::Conjunction;
-	///
-	/// assert_eq!(Conjunction::And.is_empty(), false);
-	/// assert_eq!(Conjunction::Other("foo").is_empty(), false);
-	/// assert_eq!(Conjunction::Other("").is_empty(), true);
-	/// ```
 	pub const fn is_empty(&self) -> bool {
 		match self {
 			Self::Other(s) => s.is_empty(),
 			_ => false,
 		}
+	}
+}
+
+impl Conjunction<'_> {
+	/// # Append To.
+	///
+	/// Write the conjunction to the buffer with a leading comma-space and
+	/// trailing space. (This is more efficient than pushing the same in three
+	/// steps.)
+	fn append_to(&self, v: &mut Vec<u8>) {
+		match self {
+			Self::Ampersand => { v.extend_from_slice(b", & "); },
+			Self::And => { v.extend_from_slice(b", and "); },
+			Self::AndOr => { v.extend_from_slice(b", and/or "); },
+			Self::Nor => { v.extend_from_slice(b", nor "); },
+			Self::Or => { v.extend_from_slice(b", or "); },
+			Self::Other(s) => {
+				v.extend_from_slice(b", ");
+				v.extend_from_slice(s.as_bytes());
+				v.push(b' ');
+			},
+			Self::Plus => { v.extend_from_slice(b", + "); },
+		}
+	}
+
+	#[allow(unsafe_code)]
+	/// # Append Two.
+	///
+	/// Build a string that is "A <CONJUNCTION> B".
+	fn join_two(&self, a: &str, b: &str) -> String {
+		let mut v: Vec<u8> = Vec::with_capacity(a.len() + b.len() + 2 + self.len());
+		v.extend_from_slice(a.as_bytes());
+
+		match self {
+			Self::Ampersand => { v.extend_from_slice(b" & "); },
+			Self::And => { v.extend_from_slice(b" and "); },
+			Self::AndOr => { v.extend_from_slice(b" and/or "); },
+			Self::Nor => { v.extend_from_slice(b" nor "); },
+			Self::Or => { v.extend_from_slice(b" or "); },
+			Self::Other(s) => {
+				v.push(b' ');
+				v.extend_from_slice(s.as_bytes());
+				v.push(b' ');
+			},
+			Self::Plus => { v.extend_from_slice(b" + "); },
+		}
+
+		v.extend_from_slice(b.as_bytes());
+
+		// Safety: all inputs were valid UTF-8, so the output is too.
+		unsafe { String::from_utf8_unchecked(v) }
 	}
 }
 
@@ -327,32 +354,41 @@ pub trait OxfordJoin {
 }
 
 impl<T> OxfordJoin for [T] where T: AsRef<str> {
+	#[allow(unsafe_code)]
 	/// # Oxford Join.
 	fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
 		match self.len() {
 			0 => Cow::Borrowed(""),
 			1 => Cow::Borrowed(self[0].as_ref()),
-			2 => Cow::Owned(join_two(self[0].as_ref(), self[1].as_ref(), glue)),
+			2 => Cow::Owned(glue.join_two(self[0].as_ref(), self[1].as_ref())),
 			n => {
-				let glue = glue.as_str();
-				let len = glue.len() + 1 + ((n - 1) << 1) + slice_len(self);
+				let last = n - 1;
+				let len = glue.len() + 1 + (last << 1) + slice_len(self);
+				let mut v: Vec<u8> = Vec::with_capacity(len);
 
-				let (last, rest) = self.split_last().unwrap();
-				let mut base: String = String::with_capacity(len);
-				for s in rest {
-					base.push_str(s.as_ref());
-					base.push_str(", ");
+				let mut iter = self.iter().enumerate();
+				let (_, s) = iter.next().unwrap(); // There are at least 3 entries.
+				v.extend_from_slice(s.as_ref().as_bytes());
+
+				for (k, s) in iter {
+					if k == last { glue.append_to(&mut v); }
+					else { v.extend_from_slice(b", "); }
+					v.extend_from_slice(s.as_ref().as_bytes());
 				}
 
-				base.push_str(glue);
-				base.push(' ');
-
-				base.push_str(last.as_ref());
-
-				Cow::Owned(base)
+				// Safety: all inputs were valid UTF-8, so the output is too.
+				Cow::Owned(unsafe { String::from_utf8_unchecked(v) })
 			},
 		}
 	}
+}
+
+impl<T> OxfordJoin for [T; 0] where T: AsRef<str> {
+	#[inline]
+	/// # Oxford Join.
+	///
+	/// This is a special case; the only array entry will be returned as-is.
+	fn oxford_join(&self, _glue: Conjunction) -> Cow<str> { Cow::Borrowed("") }
 }
 
 impl<T> OxfordJoin for [T; 1] where T: AsRef<str> {
@@ -371,7 +407,7 @@ impl<T> OxfordJoin for [T; 2] where T: AsRef<str> {
 	///
 	/// This is a special case; it will always read "first <CONJUNCTION> last".
 	fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
-		Cow::Owned(join_two(self[0].as_ref(), self[1].as_ref(), glue))
+		Cow::Owned(glue.join_two(self[0].as_ref(), self[1].as_ref()))
 	}
 }
 
@@ -379,23 +415,24 @@ impl<T> OxfordJoin for [T; 2] where T: AsRef<str> {
 macro_rules! join_arrays {
 	($($num:literal $pad:literal $last:literal),+ $(,)?) => ($(
 		impl<T> OxfordJoin for [T; $num] where T: AsRef<str> {
+			#[allow(unsafe_code)]
 			/// # Oxford Join.
 			fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
-				let glue = glue.as_str();
 				let len = glue.len() + $pad + slice_len(self.as_slice());
+				let mut v: Vec<u8> = Vec::with_capacity(len);
 
-				let mut base: String = String::with_capacity(len);
-				for s in self.iter().take($last) {
-					base.push_str(s.as_ref());
-					base.push_str(", ");
+				let mut iter = self.iter().enumerate();
+				let (_, s) = iter.next().unwrap();
+				v.extend_from_slice(s.as_ref().as_bytes());
+
+				for (k, s) in iter {
+					if k == $last { glue.append_to(&mut v); }
+					else { v.extend_from_slice(b", "); }
+					v.extend_from_slice(s.as_ref().as_bytes());
 				}
 
-				base.push_str(glue);
-				base.push(' ');
-
-				base.push_str(self[$last].as_ref());
-
-				Cow::Owned(base)
+				// Safety: all inputs were valid UTF-8, so the output is too.
+				Cow::Owned(unsafe { String::from_utf8_unchecked(v) })
 			}
 		}
 	)+);
@@ -436,85 +473,90 @@ join_arrays!(
 
 
 
-/// # Slice Length.
+/// # Combined Length.
+///
+/// Add up the lengths of all the strings in the slice.
 fn slice_len<T>(src: &[T]) -> usize
-where T: AsRef<str> {
-	src.iter().map(|x| x.as_ref().len()).sum()
-}
-
-#[allow(unsafe_code)]
-/// # Join Two.
-fn join_two(a: &str, b: &str, glue: Conjunction) -> String {
-	let a = a.as_bytes();
-	let b = b.as_bytes();
-	let glue = glue.as_str().as_bytes();
-
-	let mut v: Vec<u8> = Vec::with_capacity(a.len() + b.len() + 2 + glue.len());
-	v.extend_from_slice(a);
-	v.push(b' ');
-	v.extend_from_slice(glue);
-	v.push(b' ');
-	v.extend_from_slice(b);
-
-	// Safety: all inputs were valid UTF-8, so the output is too.
-	unsafe { String::from_utf8_unchecked(v) }
-}
+where T: AsRef<str> { src.iter().map(|x| x.as_ref().len()).sum() }
 
 
 
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use alloc::boxed::Box;
 	use brunch as _;
+
+	const CTEST: [Conjunction; 7] = [
+		Conjunction::Ampersand,
+		Conjunction::And,
+		Conjunction::AndOr,
+		Conjunction::Nor,
+		Conjunction::Or,
+		Conjunction::Other("Boo"),
+		Conjunction::Plus,
+	];
 
 	#[test]
 	fn t_fruit() {
 		// Make sure arrays, slices, vecs, and boxes are treated equally.
 		macro_rules! compare {
 			($($arr:ident, $expected:literal),+ $(,)?) => ($(
-				assert_eq!($arr.oxford_and(), $expected);
-				assert_eq!($arr.as_slice().oxford_and(), $expected);
-				let (v, b) = two_ways($arr.as_slice());
-				assert_eq!(v.oxford_and(), $expected);
-				assert_eq!(b.oxford_and(), $expected);
+				assert_eq!($arr.oxford_and(), $expected, "Array.");
+				assert_eq!($arr.as_slice().oxford_and(), $expected, "Slice.");
+				let v = $arr.to_vec();
+				assert_eq!(v.oxford_and(), $expected, "Vec.");
+				assert_eq!(v.into_boxed_slice().oxford_and(), $expected, "Box.");
 			)+);
 		}
 
-		let arr1: [&str; 1] = ["Apples"];
-		let arr2: [&str; 2] = ["Apples", "Bananas"];
-		let arr3: [&str; 3] = ["Apples", "Bananas", "Carrots"];
-		let arr4: [&str; 4] = ["Apples", "Bananas", "Carrots", "Dates"];
-		let arr5: [&str; 5] = ["Apples", "Bananas", "Carrots", "Dates", "Eggplant"];
+		const ARR0: [&str; 0] = [];
+		const ARR1: [&str; 1] = ["Apples"];
+		const ARR2: [&str; 2] = ["Apples", "Bananas"];
+		const ARR3: [&str; 3] = ["Apples", "Bananas", "Carrots"];
+		const ARR4: [&str; 4] = ["Apples", "Bananas", "Carrots", "Dates"];
+		const ARR5: [&str; 5] = ["Apples", "Bananas", "Carrots", "Dates", "Eggplant"];
 
 		compare!(
-			arr1, "Apples",
-			arr2, "Apples and Bananas",
-			arr3, "Apples, Bananas, and Carrots",
-			arr4, "Apples, Bananas, Carrots, and Dates",
-			arr5, "Apples, Bananas, Carrots, Dates, and Eggplant",
+			ARR0, "",
+			ARR1, "Apples",
+			ARR2, "Apples and Bananas",
+			ARR3, "Apples, Bananas, and Carrots",
+			ARR4, "Apples, Bananas, Carrots, and Dates",
+			ARR5, "Apples, Bananas, Carrots, Dates, and Eggplant",
 		);
 	}
 
 	#[test]
 	fn conjunction_len() {
-		for c in [
-			Conjunction::Ampersand,
-			Conjunction::And,
-			Conjunction::AndOr,
-			Conjunction::Nor,
-			Conjunction::Or,
-			Conjunction::Other("Hello World"),
-			Conjunction::Plus,
-		] {
+		for c in CTEST {
 			assert_eq!(c.len(), c.as_str().len());
 			assert!(! c.is_empty());
 		}
 
 		assert!(Conjunction::Other("").is_empty());
-	}	fn two_ways<'a>(src: &'a [&'a str]) -> (Vec<&'a str>, Box<[&'a str]>) {
-		let v = src.to_vec();
-		let b = Box::from(src);
-		(v, b)
+	}
+
+	#[test]
+	fn conjunction_append_to() {
+		for c in CTEST {
+			let mut v: Vec<u8> = Vec::new();
+			c.append_to(&mut v);
+
+			let mut s = String::new();
+			s.push_str(", ");
+			s.push_str(c.as_str());
+			s.push(' ');
+			assert_eq!(v, s.as_bytes());
+		}
+	}
+
+	#[test]
+	fn join_two() {
+		for c in CTEST {
+			let tmp = ["one", " ", c.as_str(), " ", "two"].concat();
+			assert_eq!(c.join_two("one", "two"), tmp);
+		}
+
+		assert!(Conjunction::Other("").is_empty());
 	}
 }
