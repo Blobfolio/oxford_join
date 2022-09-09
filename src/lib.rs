@@ -2,6 +2,7 @@
 # Oxford Join
 
 [![Documentation](https://docs.rs/oxford_join/badge.svg)](https://docs.rs/oxford_join/)
+[![Changelog](https://img.shields.io/crates/v/oxford_join.svg?label=Changelog&color=9cf)](https://github.com/Blobfolio/oxford_join/blob/master/CHANGELOG.md)
 [![crates.io](https://img.shields.io/crates/v/oxford_join.svg)](https://crates.io/crates/oxford_join)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](https://github.com/Blobfolio/oxford_join)
 
@@ -94,8 +95,8 @@ use core::{
 ///
 /// If you're doing something weird and the preset entries aren't currint it
 /// for you, you can use [`Conjunction::Other`], which wraps an `&str`. This
-/// value should just be the word/symbol; any outer whitespace is provided
-/// during join.
+/// value should just be the word/symbol; surrounding whitespace and
+/// punctuation are added during the join as needed.
 ///
 /// ## Examples.
 ///
