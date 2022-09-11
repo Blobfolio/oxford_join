@@ -8,6 +8,7 @@
 
 * impl `OxfordJoin` for `BTreeSet`
 * impl `OxfordJoin` for `BTreeMap` (values)
+* `Conjunction::oxford_join`
 
 ### Changed
 

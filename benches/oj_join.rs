@@ -6,10 +6,14 @@ use brunch::{
 	Bench,
 	benches,
 };
-use oxford_join::OxfordJoin;
+use oxford_join::{
+	Conjunction,
+	OxfordJoin,
+};
 use std::collections::{
 	BTreeMap,
 	BTreeSet,
+	HashSet,
 };
 
 
@@ -29,6 +33,7 @@ const SLICE: &[&str] = &["Apples", "Bananas", "Oranges", "Pears", "Jackfruit"];
 fn main() {
 	let map = FIVE.into_iter().enumerate().collect::<BTreeMap<usize, &str>>();
 	let set = BTreeSet::from(FIVE);
+	let set2 = HashSet::from(FIVE);
 
 	benches!(
 		inline:
@@ -47,6 +52,12 @@ fn main() {
 
 		Bench::new("BTreeMap::<_, T>::oxford_and()").run(|| map.oxford_and()),
 		Bench::new("BTreeSet::<T>::oxford_and()").run(|| set.oxford_and()),
+
+		Bench::spacer(),
+
+		// HashSet doesn't implement OxfordJoin directly.
+		Bench::new("Conjunction::And.oxford_join(&HashSet<T>)")
+			.run(|| Conjunction::And.oxford_join(&set2)),
 
 		Bench::spacer(),
 

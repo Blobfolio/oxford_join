@@ -217,6 +217,43 @@ impl Conjunction<'_> {
 }
 
 impl Conjunction<'_> {
+	/// # Oxford Join (Generic).
+	///
+	/// This convenience method allows you to Oxford-join _any_ iterable data
+	/// source that yields `AsRef<str>`.
+	///
+	/// If your data type implements [`OxfordJoin`], you should use its
+	/// [`OxfordJoin::oxford_join`] implementation instead as that will be
+	/// faster — they're _specialized_ — but you'll get the same result either
+	/// way.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use oxford_join::{Conjunction, OxfordJoin};
+	/// const LIST: [&str; 3] = ["Apples", "Bananas", "Carrots"];
+	///
+	/// // Arrays, for example, implement OxfordJoin, so you should leverage
+	/// // the trait method instead.
+	/// assert_eq!(LIST.oxford_join(Conjunction::And), "Apples, Bananas, and Carrots");
+	///
+	/// // But if you use this method anyway, you'll get the same answer:
+	/// assert_eq!(Conjunction::And.oxford_join(LIST), "Apples, Bananas, and Carrots");
+	///
+	/// // A more appropriate use case for this method would be something like
+	/// // the following:
+	/// assert_eq!(
+	///     Conjunction::And.oxford_join("hello".chars().map(|c| c.to_string())),
+	///     "h, e, l, l, and o"
+	/// );
+	/// ```
+	pub fn oxford_join<I, T>(&self, iter: I) -> String
+	where T: AsRef<str>, I: IntoIterator<Item=T> {
+		iter.into_iter().collect::<Vec<_>>().oxford_join(*self).into_owned()
+	}
+}
+
+impl Conjunction<'_> {
 	/// # Append for Three+.
 	///
 	/// This writes the conjunction with a leading comma-space and trailing
