@@ -560,13 +560,9 @@ macro_rules! join_btrees {
 	);
 }
 
-impl<K, T> OxfordJoin for BTreeMap<K, T> where T: AsRef<str> {
-	join_btrees!(values);
-}
+impl<K, T> OxfordJoin for BTreeMap<K, T> where T: AsRef<str> { join_btrees!(values); }
 
-impl<T> OxfordJoin for BTreeSet<T> where T: AsRef<str> {
-	join_btrees!(iter);
-}
+impl<T> OxfordJoin for BTreeSet<T> where T: AsRef<str> { join_btrees!(iter); }
 
 
 
