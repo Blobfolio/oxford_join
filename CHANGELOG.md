@@ -11,7 +11,7 @@
 
 ### Changed
 
-* Minor performance improvements
+* Improved peformance, particularly for large arrays/slices
 
 
 
