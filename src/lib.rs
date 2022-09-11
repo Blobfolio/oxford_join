@@ -416,6 +416,30 @@ impl<T> OxfordJoin for [T; 2] where T: AsRef<str> {
 	}
 }
 
+impl<T> OxfordJoin for [T; 3] where T: AsRef<str> {
+	#[allow(unsafe_code)]
+	/// # Oxford Join.
+	///
+	/// This is a special case; it will always read "a, b, <CONJUNCTION> c".
+	fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
+		let a = self[0].as_ref().as_bytes();
+		let b = self[1].as_ref().as_bytes();
+		let c = self[2].as_ref().as_bytes();
+
+		let len = glue.len() + 5 + a.len() + b.len() + c.len();
+		let mut v: Vec<u8> = Vec::with_capacity(len);
+
+		v.extend_from_slice(a);
+		v.extend_from_slice(b", ");
+		v.extend_from_slice(b);
+		glue.append_to(&mut v);
+		v.extend_from_slice(c);
+
+		// Safety: all inputs were valid UTF-8, so the output is too.
+		Cow::Owned(unsafe { String::from_utf8_unchecked(v) })
+	}
+}
+
 /// # Join Arrays.
 macro_rules! join_arrays {
 	($($num:literal $pad:literal $last:literal),+ $(,)?) => ($(
@@ -444,14 +468,13 @@ macro_rules! join_arrays {
 }
 
 join_arrays!(
-	3 5 2,
-	4 7 3,
-	5 9 4,
-	6 11 5,
-	7 13 6,
-	8 15 7,
-	9 17 8,
-	10 19 9,
+	 4  7  3,
+	 5  9  4,
+	 6 11  5,
+	 7 13  6,
+	 8 15  7,
+	 9 17  8,
+	10 19  9,
 	11 21 10,
 	12 23 11,
 	13 25 12,
@@ -604,6 +627,10 @@ mod tests {
 		const ARR3: [&str; 3] = ["Apples", "Bananas", "Carrots"];
 		const ARR4: [&str; 4] = ["Apples", "Bananas", "Carrots", "Dates"];
 		const ARR5: [&str; 5] = ["Apples", "Bananas", "Carrots", "Dates", "Eggplant"];
+		const ARR32: [&str; 32] = [
+			"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F",
+			"G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V",
+		];
 
 		compare!(
 			ARR0, "",
@@ -612,6 +639,7 @@ mod tests {
 			ARR3, "Apples, Bananas, and Carrots",
 			ARR4, "Apples, Bananas, Carrots, and Dates",
 			ARR5, "Apples, Bananas, Carrots, Dates, and Eggplant",
+			ARR32, "0, 1, 2, 3, 4, 5, 6, 7, 8, 9, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, and V",
 		);
 	}
 
