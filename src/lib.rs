@@ -120,7 +120,9 @@ macro_rules! join_split {
 			dst = write_advance($last.as_ref().as_bytes(), dst);
 
 			// Set the length.
-			v.set_len(dst.offset_from(v.as_ptr()) as usize);
+			let offset = dst.offset_from(v.as_ptr()) as usize;
+			assert_eq!(offset, $len, "The length of the joined string changed?! Invalid AsRef<str> impl?");
+			v.set_len(offset);
 
 			// Build and return the string.
 			String::from_utf8_unchecked(v)
@@ -154,7 +156,9 @@ macro_rules! join_split {
 			dst = write_advance(iter.next().unwrap().as_ref().as_bytes(), dst);
 
 			// Set the length.
-			v.set_len(dst.offset_from(v.as_ptr()) as usize);
+			let offset = dst.offset_from(v.as_ptr()) as usize;
+			assert_eq!(offset, $len, "The length of the joined string changed?! Invalid AsRef<str> impl?");
+			v.set_len(offset);
 
 			// Build and return the string.
 			String::from_utf8_unchecked(v)
@@ -319,7 +323,8 @@ impl Conjunction<'_> {
 	///
 	/// Build a string that is "A <CONJUNCTION> B".
 	fn join_two(&self, a: &str, b: &str) -> String {
-		let mut v: Vec<u8> = Vec::with_capacity(a.len() + b.len() + 2 + self.len());
+		let len = a.len() + b.len() + 2 + self.len();
+		let mut v: Vec<u8> = Vec::with_capacity(len);
 		unsafe {
 			let mut dst = write_advance(a.as_bytes(), v.as_mut_ptr());
 
@@ -339,7 +344,11 @@ impl Conjunction<'_> {
 			};
 
 			dst = write_advance(b.as_bytes(), dst);
-			v.set_len(dst.offset_from(v.as_ptr()) as usize);
+
+			let offset = dst.offset_from(v.as_ptr()) as usize;
+			debug_assert_eq!(offset, len, "BUG: The length of the joined string changed?!");
+			v.set_len(offset);
+
 			String::from_utf8_unchecked(v)
 		}
 	}
