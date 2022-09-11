@@ -30,7 +30,6 @@ fn main() {
 	let map = FIVE.into_iter().enumerate().collect::<BTreeMap<usize, &str>>();
 	let set = BTreeSet::from(FIVE);
 
-
 	benches!(
 		inline:
 
@@ -39,7 +38,6 @@ fn main() {
 		Bench::new("<[T; 3]>::oxford_and()").run(|| THREE.oxford_and()),
 		Bench::new("<[T; 5]>::oxford_and()").run(|| FIVE.oxford_and()),
 		Bench::new("<[T; 32]>::oxford_and()").run(|| THIRTYTWO.oxford_and()),
-		Bench::new("<[T; 32]>::join()").run(|| THIRTYTWO.join(", ")),
 
 		Bench::spacer(),
 
@@ -49,5 +47,9 @@ fn main() {
 
 		Bench::new("BTreeMap::<_, T>::oxford_and()").run(|| map.oxford_and()),
 		Bench::new("BTreeSet::<T>::oxford_and()").run(|| set.oxford_and()),
+
+		Bench::spacer(),
+
+		Bench::new(r#"<[T; 32]>::join(", ")"#).run(|| THIRTYTWO.join(", ")),
 	);
 }
