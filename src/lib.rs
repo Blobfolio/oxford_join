@@ -95,77 +95,6 @@ use core::{
 /// # Comma + Space.
 const COMMASPACE: &[u8] = b", ";
 
-/// # Join 3+.
-///
-/// Sets with three or more items follow the general pattern of:
-/// `"first" + [", mid"] + ", CONJUNCTION " + "last"`
-macro_rules! join_split {
-	// Arrays and slices can be pre-split, avoiding the need to iterate.
-	($first:ident, $mid:ident, $last:ident, $len:ident, $glue:ident) => {{
-		let mut v: Vec<u8> = Vec::with_capacity($len);
-		unsafe {
-			// Write the first.
-			let mut dst = write_advance($first.as_ref().as_bytes(), v.as_mut_ptr());
-
-			// Write the middle.
-			for s in $mid {
-				dst = write_advance(COMMASPACE, dst);
-				dst = write_advance(s.as_ref().as_bytes(), dst);
-			}
-
-			// Write the glue.
-			dst = $glue.write_to(dst);
-
-			// Write the last.
-			dst = write_advance($last.as_ref().as_bytes(), dst);
-
-			// Set the length.
-			let offset = dst.offset_from(v.as_ptr()) as usize;
-			assert_eq!(offset, $len, "The length of the joined string changed?! Invalid AsRef<str> impl?");
-			v.set_len(offset);
-
-			// Build and return the string.
-			String::from_utf8_unchecked(v)
-		}
-	}};
-
-	// The BTree collections have to iterate, but we can still do some things
-	// to help them out.
-	($iter:expr, $last:ident, $len:ident, $glue:ident) => {{
-		let mut v: Vec<u8> = Vec::with_capacity($len);
-		let mut iter = $iter;
-		unsafe {
-			// Write the first.
-			let mut dst = write_advance(
-				iter.next().unwrap().as_ref().as_bytes(),
-				v.as_mut_ptr()
-			);
-
-			// Write the middle. ("last" is the count minus one, so we need to
-			// subtract one more to account for the (first) entry we already
-			// took.)
-			for s in iter.by_ref().take($last - 1) {
-				dst = write_advance(COMMASPACE, dst);
-				dst = write_advance(s.as_ref().as_bytes(), dst);
-			}
-
-			// Write the glue.
-			dst = $glue.write_to(dst);
-
-			// Write the last.
-			dst = write_advance(iter.next().unwrap().as_ref().as_bytes(), dst);
-
-			// Set the length.
-			let offset = dst.offset_from(v.as_ptr()) as usize;
-			assert_eq!(offset, $len, "The length of the joined string changed?! Invalid AsRef<str> impl?");
-			v.set_len(offset);
-
-			// Build and return the string.
-			String::from_utf8_unchecked(v)
-		}
-	}};
-}
-
 
 
 #[derive(Debug, Copy, Clone, Default, Eq, Hash, PartialEq)]
@@ -288,68 +217,43 @@ impl Conjunction<'_> {
 }
 
 impl Conjunction<'_> {
-	#[allow(unsafe_code)]
-	/// # Write To.
+	/// # Append for Three+.
 	///
 	/// This writes the conjunction with a leading comma-space and trailing
-	/// space to the raw pointer, then returns that pointer advanced the
-	/// appropriate length.
-	///
-	/// ## Safety
-	///
-	/// This is unsafe because it deals with pointers, but space has been
-	/// pre-allocated for the length being written, so it's fine. ;)
-	unsafe fn write_to(&self, v: *mut u8) -> *mut u8 {
+	/// space to the buffer, e.g. `", and "`.
+	fn append_to(&self, v: &mut Vec<u8>) {
 		match self {
-			Self::Ampersand => write_advance(b", & ", v),
-			Self::And => write_advance(b", and ", v),
-			Self::AndOr => write_advance(b", and/or ", v),
-			Self::Nor => write_advance(b", nor ", v),
-			Self::Or => write_advance(b", or ", v),
+			Self::Ampersand => { v.extend_from_slice(b", & "); },
+			Self::And => { v.extend_from_slice(b", and "); },
+			Self::AndOr => { v.extend_from_slice(b", and/or "); },
+			Self::Nor => { v.extend_from_slice(b", nor "); },
+			Self::Or => { v.extend_from_slice(b", or "); },
 			Self::Other(s) => {
-				let mut v = write_advance(COMMASPACE, v);
-				v = write_advance(s.as_bytes(), v);
-				core::ptr::write(v, b' ');
-				v.add(1)
+				v.extend_from_slice(COMMASPACE);
+				v.extend_from_slice(s.as_bytes());
+				v.push(b' ');
 			},
-			Self::Plus => write_advance(b", + ", v),
+			Self::Plus => { v.extend_from_slice(b", + "); },
 		}
 	}
 
-	#[allow(unsafe_code)]
-	#[allow(clippy::cast_sign_loss)] // We're subtracting zero.
-	#[inline]
-	/// # Join Two.
+	/// # Append for Two.
 	///
-	/// Build a string that is "A <CONJUNCTION> B".
-	fn join_two(&self, a: &str, b: &str) -> String {
-		let len = a.len() + b.len() + 2 + self.len();
-		let mut v: Vec<u8> = Vec::with_capacity(len);
-		unsafe {
-			let mut dst = write_advance(a.as_bytes(), v.as_mut_ptr());
-
-			dst = match self {
-				Self::Ampersand => write_advance(b" & ", dst),
-				Self::And => write_advance(b" and ", dst),
-				Self::AndOr => write_advance(b" and/or ", dst),
-				Self::Nor => write_advance(b" nor ", dst),
-				Self::Or => write_advance(b" or ", dst),
-				Self::Other(s) => {
-					core::ptr::write(dst, b' ');
-					dst = write_advance(s.as_bytes(), dst.add(1));
-					core::ptr::write(dst, b' ');
-					dst.add(1)
-				},
-				Self::Plus => write_advance(b" + ", dst),
-			};
-
-			dst = write_advance(b.as_bytes(), dst);
-
-			let offset = dst.offset_from(v.as_ptr()) as usize;
-			debug_assert_eq!(offset, len, "BUG: The length of the joined string changed?!");
-			v.set_len(offset);
-
-			String::from_utf8_unchecked(v)
+	/// This writes the conjunction with a leading and trailing space to the
+	/// buffer, e.g. `" and "`.
+	fn append_two(&self, v: &mut Vec<u8>) {
+		match self {
+			Self::Ampersand => { v.extend_from_slice(b" & "); },
+			Self::And => { v.extend_from_slice(b" and "); },
+			Self::AndOr => { v.extend_from_slice(b" and/or "); },
+			Self::Nor => { v.extend_from_slice(b" nor "); },
+			Self::Or => { v.extend_from_slice(b" or "); },
+			Self::Other(s) => {
+				v.push(b' ');
+				v.extend_from_slice(s.as_bytes());
+				v.push(b' ');
+			},
+			Self::Plus => { v.extend_from_slice(b" + "); },
 		}
 	}
 }
@@ -457,18 +361,40 @@ impl<T> OxfordJoin for [T] where T: AsRef<str> {
 		match self.len() {
 			0 => Cow::Borrowed(""),
 			1 => Cow::Borrowed(self[0].as_ref()),
-			2 => Cow::Owned(glue.join_two(self[0].as_ref(), self[1].as_ref())),
+			2 => {
+				let a = self[0].as_ref().as_bytes();
+				let b = self[1].as_ref().as_bytes();
+
+				let len = a.len() + b.len() + 2 + glue.len();
+				let mut v = Vec::with_capacity(len);
+				v.extend_from_slice(a);  // First.
+				glue.append_two(&mut v); // Conjunction.
+				v.extend_from_slice(b);  // Last.
+
+				// Safety: strings in, strings out.
+				let out = unsafe { String::from_utf8_unchecked(v) };
+				Cow::Owned(out)
+			},
 			n => {
 				let last = n - 1;
 				let len = glue.len() + 1 + (last << 1) + self.iter().map(|x| x.as_ref().len()).sum::<usize>();
+				let mut v = Vec::with_capacity(len);
 
-				// We can't pattern this split like we can with arrays, but
-				// this will do.
-				let first = &self[0];
-				let mid = &self[1..last];
-				let last = &self[last];
+				// Write the first.
+				v.extend_from_slice(self[0].as_ref().as_bytes());
 
-				let out = join_split!(first, mid, last, len, glue);
+				// Write the middles.
+				for s in &self[1..last] {
+					v.extend_from_slice(COMMASPACE);
+					v.extend_from_slice(s.as_ref().as_bytes());
+				}
+
+				// Write the conjunction and last.
+				glue.append_to(&mut v);
+				v.extend_from_slice(self[last].as_ref().as_bytes());
+
+				// Safety: strings in, strings out.
+				let out = unsafe { String::from_utf8_unchecked(v) };
 				Cow::Owned(out)
 			},
 		}
@@ -494,12 +420,24 @@ impl<T> OxfordJoin for [T; 1] where T: AsRef<str> {
 }
 
 impl<T> OxfordJoin for [T; 2] where T: AsRef<str> {
+	#[allow(unsafe_code)]
 	#[inline]
 	/// # Oxford Join.
 	///
 	/// This is a special case; it will always read "first <CONJUNCTION> last".
 	fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
-		Cow::Owned(glue.join_two(self[0].as_ref(), self[1].as_ref()))
+		let a = self[0].as_ref().as_bytes();
+		let b = self[1].as_ref().as_bytes();
+
+		let len = a.len() + b.len() + 2 + glue.len();
+		let mut v = Vec::with_capacity(len);
+		v.extend_from_slice(a);  // First.
+		glue.append_two(&mut v); // Conjunction.
+		v.extend_from_slice(b);  // Last.
+
+		// Safety: strings in, strings out.
+		let out = unsafe { String::from_utf8_unchecked(v) };
+		Cow::Owned(out)
 	}
 }
 
@@ -512,7 +450,23 @@ macro_rules! join_arrays {
 			fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
 				let len = glue.len() + $pad + self.iter().map(|x| x.as_ref().len()).sum::<usize>();
 				let [first, mid @ .., last] = self;
-				let out = join_split!(first, mid, last, len, glue);
+				let mut v = Vec::with_capacity(len);
+
+				// Write the first.
+				v.extend_from_slice(first.as_ref().as_bytes());
+
+				// Write the middles.
+				for s in mid {
+					v.extend_from_slice(COMMASPACE);
+					v.extend_from_slice(s.as_ref().as_bytes());
+				}
+
+				// Write the conjunction and last.
+				glue.append_to(&mut v);
+				v.extend_from_slice(last.as_ref().as_bytes());
+
+				// Safety: strings in, strings out.
+				let out = unsafe { String::from_utf8_unchecked(v) };
 				Cow::Owned(out)
 			}
 		}
@@ -552,66 +506,66 @@ join_arrays!(
 	32 63 31,
 );
 
-impl<K, T> OxfordJoin for BTreeMap<K, T> where T: AsRef<str> {
-	#[allow(unsafe_code)]
-	/// # Oxford Join.
-	fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
-		match self.len() {
-			0 => Cow::Borrowed(""),
-			1 => {
-				let a = self.values().next().unwrap();
-				Cow::Borrowed(a.as_ref())
-			},
-			2 => {
-				let mut iter = self.values();
-				let a = iter.next().unwrap();
-				let b = iter.next().unwrap();
-				Cow::Owned(glue.join_two(a.as_ref(), b.as_ref()))
-			},
-			n => {
-				let last = n - 1;
-				let len = glue.len() + 1 + (last << 1) + self.values().map(|x| x.as_ref().len()).sum::<usize>();
-				let out = join_split!(self.values(), last, len, glue);
-				Cow::Owned(out)
-			},
+macro_rules! join_btrees {
+	($iter:ident) => (
+		#[allow(unsafe_code)]
+		/// # Oxford Join.
+		fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
+			match self.len() {
+				0 => Cow::Borrowed(""),
+				1 => Cow::Borrowed(self.$iter().next().unwrap().as_ref()),
+				2 => {
+					let mut iter = self.$iter();
+					let a = iter.next().unwrap().as_ref().as_bytes();
+					let b = iter.next().unwrap().as_ref().as_bytes();
+
+					let len = a.len() + b.len() + 2 + glue.len();
+					let mut v = Vec::with_capacity(len);
+					v.extend_from_slice(a);  // First.
+					glue.append_two(&mut v); // Conjunction.
+					v.extend_from_slice(b);  // Last.
+
+					// Safety: strings in, strings out.
+					let out = unsafe { String::from_utf8_unchecked(v) };
+					Cow::Owned(out)
+				},
+				n => {
+					let last = n - 1;
+					let len = glue.len() + 1 + (last << 1) + self.$iter().map(|x| x.as_ref().len()).sum::<usize>();
+
+					let mut v = Vec::with_capacity(len);
+					let mut iter = self.$iter();
+
+					// Write the first.
+					v.extend_from_slice(iter.next().unwrap().as_ref().as_bytes());
+
+					// Write the middles. (Last is count minus one, but since
+					// we already wrote an entry, we need to subtract one
+					// again.)
+					for s in iter.by_ref().take(last - 1) {
+						v.extend_from_slice(COMMASPACE);
+						v.extend_from_slice(s.as_ref().as_bytes());
+					}
+
+					// Write the conjunction and last.
+					glue.append_to(&mut v);
+					v.extend_from_slice(iter.next().unwrap().as_ref().as_bytes());
+
+					// Safety: strings in, strings out.
+					let out = unsafe { String::from_utf8_unchecked(v) };
+					Cow::Owned(out)
+				},
+			}
 		}
-	}
+	);
+}
+
+impl<K, T> OxfordJoin for BTreeMap<K, T> where T: AsRef<str> {
+	join_btrees!(values);
 }
 
 impl<T> OxfordJoin for BTreeSet<T> where T: AsRef<str> {
-	#[allow(unsafe_code)]
-	/// # Oxford Join.
-	fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
-		match self.len() {
-			0 => Cow::Borrowed(""),
-			1 => {
-				let a = self.iter().next().unwrap();
-				Cow::Borrowed(a.as_ref())
-			},
-			2 => {
-				let mut iter = self.iter();
-				let a = iter.next().unwrap();
-				let b = iter.next().unwrap();
-				Cow::Owned(glue.join_two(a.as_ref(), b.as_ref()))
-			},
-			n => {
-				let last = n - 1;
-				let len = glue.len() + 1 + (last << 1) + self.iter().map(|x| x.as_ref().len()).sum::<usize>();
-				let out = join_split!(self.iter(), last, len, glue);
-				Cow::Owned(out)
-			},
-		}
-	}
-}
-
-
-
-#[allow(unsafe_code)]
-#[inline]
-/// # Write/Advance.
-const unsafe fn write_advance(src: &[u8], dst: *mut u8) -> *mut u8 {
-	core::ptr::copy_nonoverlapping(src.as_ptr(), dst, src.len());
-	dst.add(src.len())
+	join_btrees!(iter);
 }
 
 
@@ -686,44 +640,19 @@ mod tests {
 
 	#[test]
 	#[allow(unsafe_code)]
-	fn conjunction_append_to() {
+	fn conjunction_append() {
 		for c in CTEST {
-			// What we expect.
+			// Two.
+			let s = [" ", c.as_str(), " "].concat();
+			let mut v = Vec::new();
+			c.append_two(&mut v);
+			assert_eq!(v, s.as_bytes());
+
+			// Three+.
 			let s = [", ", c.as_str(), " "].concat();
-
-			// Check the pointer version too.
-			let mut v = Vec::with_capacity(s.len());
-			unsafe {
-				let ptr = c.write_to(v.as_mut_ptr());
-
-				// The pointer should have the same length as the original.
-				assert_eq!(
-					ptr.offset_from(v.as_ptr()) as usize,
-					s.len(),
-					"Wrong ptr length: {}.", c.as_str()
-				);
-
-				v.set_len(s.len());
-			}
-
-			// It should equal the manual version.
+			v.truncate(0);
+			c.append_to(&mut v);
 			assert_eq!(v, s.as_bytes());
 		}
-	}
-
-	#[test]
-	fn join_two_three() {
-		for c in CTEST {
-			let tmp = ["one ", c.as_str(), " two"].concat();
-			assert_eq!(c.join_two("one", "two"), tmp);
-
-			// We test collections of various sizes elsewhere, but only with
-			// one conjunction. This makes sure each individual conjunction
-			// gets written correctly.
-			let tmp = ["one, two, ", c.as_str(), " three"].concat();
-			assert_eq!(["one", "two", "three"].oxford_join(c), tmp);
-		}
-
-		assert!(Conjunction::Other("").is_empty());
 	}
 }
