@@ -7,6 +7,10 @@ use brunch::{
 	benches,
 };
 use oxford_join::OxfordJoin;
+use std::collections::{
+	BTreeMap,
+	BTreeSet,
+};
 
 
 
@@ -18,21 +22,26 @@ const SLICE: &[&str] = &["Apples", "Bananas", "Oranges", "Pears", "Jackfruit"];
 
 
 
-benches!(
-	Bench::new("<[T; 1]>::oxford_and()")
-		.run(|| ONE.oxford_and()),
+fn main() {
+	let map = FIVE.into_iter().enumerate().collect::<BTreeMap<usize, &str>>();
+	let set = BTreeSet::from(FIVE);
 
-	Bench::new("<[T; 2]>::oxford_and()")
-		.run(|| TWO.oxford_and()),
 
-	Bench::new("<[T; 3]>::oxford_and()")
-		.run(|| THREE.oxford_and()),
+	benches!(
+		inline:
 
-	Bench::new("<[T; 5]>::oxford_and()")
-		.run(|| FIVE.oxford_and()),
+		Bench::new("<[T; 1]>::oxford_and()").run(|| ONE.oxford_and()),
+		Bench::new("<[T; 2]>::oxford_and()").run(|| TWO.oxford_and()),
+		Bench::new("<[T; 3]>::oxford_and()").run(|| THREE.oxford_and()),
+		Bench::new("<[T; 5]>::oxford_and()").run(|| FIVE.oxford_and()),
 
-	Bench::spacer(),
+		Bench::spacer(),
 
-	Bench::new("<&[T]>::oxford_and()")
-		.run(|| SLICE.oxford_and()),
-);
+		Bench::new("<&[T]>::oxford_and()").run(|| SLICE.oxford_and()),
+
+		Bench::spacer(),
+
+		Bench::new("BTreeMap::<_, T>::oxford_and()").run(|| map.oxford_and()),
+		Bench::new("BTreeSet::<T>::oxford_and()").run(|| set.oxford_and()),
+	);
+}

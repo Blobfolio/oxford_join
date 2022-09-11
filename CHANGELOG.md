@@ -4,6 +4,11 @@
 
 ## [0.2.5](https://github.com/Blobfolio/oxford_join/releases/tag/v0.2.5) - TBD
 
+### New
+
+* impl `OxfordJoin` for `BTreeSet`
+* impl `OxfordJoin` for `BTreeMap` (values)
+
 ### Changed
 
 * Minor performance improvements

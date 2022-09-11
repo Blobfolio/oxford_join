@@ -77,6 +77,10 @@ extern crate alloc;
 
 use alloc::{
 	borrow::Cow,
+	collections::{
+		BTreeSet,
+		BTreeMap,
+	},
 	string::String,
 	vec::Vec,
 };
@@ -472,6 +476,82 @@ join_arrays!(
 	32 63 31,
 );
 
+impl<K, T> OxfordJoin for BTreeMap<K, T> where T: AsRef<str> {
+	#[allow(unsafe_code)]
+	/// # Oxford Join.
+	fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
+		match self.len() {
+			0 => Cow::Borrowed(""),
+			1 => {
+				let a = self.values().next().unwrap();
+				Cow::Borrowed(a.as_ref())
+			},
+			2 => {
+				let mut iter = self.values();
+				let a = iter.next().unwrap();
+				let b = iter.next().unwrap();
+				Cow::Owned(glue.join_two(a.as_ref(), b.as_ref()))
+			},
+			n => {
+				let last = n - 1;
+				let len = glue.len() + 1 + (last << 1) + self.values().map(|x| x.as_ref().len()).sum::<usize>();
+				let mut v: Vec<u8> = Vec::with_capacity(len);
+
+				let mut iter = self.values().enumerate();
+				let (_, s) = iter.next().unwrap(); // There are at least 3 entries.
+				v.extend_from_slice(s.as_ref().as_bytes());
+
+				for (k, s) in iter {
+					if k == last { glue.append_to(&mut v); }
+					else { v.extend_from_slice(b", "); }
+					v.extend_from_slice(s.as_ref().as_bytes());
+				}
+
+				// Safety: all inputs were valid UTF-8, so the output is too.
+				Cow::Owned(unsafe { String::from_utf8_unchecked(v) })
+			},
+		}
+	}
+}
+
+impl<T> OxfordJoin for BTreeSet<T> where T: AsRef<str> {
+	#[allow(unsafe_code)]
+	/// # Oxford Join.
+	fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
+		match self.len() {
+			0 => Cow::Borrowed(""),
+			1 => {
+				let a = self.iter().next().unwrap();
+				Cow::Borrowed(a.as_ref())
+			},
+			2 => {
+				let mut iter = self.iter();
+				let a = iter.next().unwrap();
+				let b = iter.next().unwrap();
+				Cow::Owned(glue.join_two(a.as_ref(), b.as_ref()))
+			},
+			n => {
+				let last = n - 1;
+				let len = glue.len() + 1 + (last << 1) + self.iter().map(|x| x.as_ref().len()).sum::<usize>();
+				let mut v: Vec<u8> = Vec::with_capacity(len);
+
+				let mut iter = self.iter().enumerate();
+				let (_, s) = iter.next().unwrap(); // There are at least 3 entries.
+				v.extend_from_slice(s.as_ref().as_bytes());
+
+				for (k, s) in iter {
+					if k == last { glue.append_to(&mut v); }
+					else { v.extend_from_slice(b", "); }
+					v.extend_from_slice(s.as_ref().as_bytes());
+				}
+
+				// Safety: all inputs were valid UTF-8, so the output is too.
+				Cow::Owned(unsafe { String::from_utf8_unchecked(v) })
+			},
+		}
+	}
+}
+
 
 
 /// # Combined Length.
@@ -499,14 +579,22 @@ mod tests {
 
 	#[test]
 	fn t_fruit() {
-		// Make sure arrays, slices, vecs, and boxes are treated equally.
+		// Make sure arrays, slices, vecs, boxes, etc., all work out the same
+		// way.
 		macro_rules! compare {
 			($($arr:ident, $expected:literal),+ $(,)?) => ($(
 				assert_eq!($arr.oxford_and(), $expected, "Array.");
 				assert_eq!($arr.as_slice().oxford_and(), $expected, "Slice.");
+
 				let v = $arr.to_vec();
 				assert_eq!(v.oxford_and(), $expected, "Vec.");
 				assert_eq!(v.into_boxed_slice().oxford_and(), $expected, "Box.");
+
+				let v: BTreeMap<usize, &str> = $arr.into_iter().enumerate().collect();
+				assert_eq!(v.oxford_and(), $expected, "BTreeMap.");
+
+				let v = BTreeSet::from($arr);
+				assert_eq!(v.oxford_and(), $expected, "BTreeSet.");
 			)+);
 		}
 
