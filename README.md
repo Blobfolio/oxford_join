@@ -1,6 +1,7 @@
 # Oxford Join
 
 [![Documentation](https://docs.rs/oxford_join/badge.svg)](https://docs.rs/oxford_join/)
+[![Changelog](https://img.shields.io/crates/v/oxford_join.svg?label=Changelog&color=9cf)](https://github.com/Blobfolio/oxford_join/blob/master/CHANGELOG.md)
 [![crates.io](https://img.shields.io/crates/v/oxford_join.svg)](https://crates.io/crates/oxford_join)
 [![Build Status](https://github.com/Blobfolio/oxford_join/workflows/Build/badge.svg)](https://github.com/Blobfolio/oxford_join/actions)
 [![Dependency Status](https://deps.rs/repo/github/blobfolio/oxford_join/status.svg)](https://deps.rs/repo/github/blobfolio/oxford_join)
