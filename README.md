@@ -1,11 +1,12 @@
 # Oxford Join
 
-[![Documentation](https://docs.rs/oxford_join/badge.svg)](https://docs.rs/oxford_join/)
-[![Changelog](https://img.shields.io/crates/v/oxford_join.svg?label=Changelog&color=9cf)](https://github.com/Blobfolio/oxford_join/blob/master/CHANGELOG.md)
-[![crates.io](https://img.shields.io/crates/v/oxford_join.svg)](https://crates.io/crates/oxford_join)
-[![Build Status](https://github.com/Blobfolio/oxford_join/workflows/Build/badge.svg)](https://github.com/Blobfolio/oxford_join/actions)
-[![Dependency Status](https://deps.rs/repo/github/blobfolio/oxford_join/status.svg)](https://deps.rs/repo/github/blobfolio/oxford_join)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](https://github.com/Blobfolio/oxford_join)
+[![docs.rs](https://img.shields.io/docsrs/oxford_join.svg?style=flat-square&label=docs.rs)](https://docs.rs/oxford_join/)
+[![changelog](https://img.shields.io/crates/v/oxford_join.svg?style=flat-square&label=changelog&color=9b59b6)](https://github.com/Blobfolio/oxford_join/blob/master/CHANGELOG.md)<br>
+[![crates.io](https://img.shields.io/crates/v/oxford_join.svg?style=flat-square&label=crates.io)](https://crates.io/crates/oxford_join)
+[![ci](https://img.shields.io/github/workflow/status/Blobfolio/oxford_join/Build.svg?style=flat-square&label=ci)](https://github.com/Blobfolio/oxford_join/actions)
+[![deps.rs](https://deps.rs/repo/github/blobfolio/oxford_join/status.svg?style=flat-square&label=deps.rs)](https://deps.rs/repo/github/blobfolio/oxford_join)<br>
+[![license](https://img.shields.io/badge/license-wtfpl-ff1493?style=flat-square)](https://en.wikipedia.org/wiki/WTFPL)
+[![contributions welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square&label=contributions)](https://github.com/Blobfolio/oxford_join/issues)
 
 Join a slice of strings with [Oxford Commas](https://en.wikipedia.org/wiki/Serial_comma) inserted as necessary, using the `Conjunction` of your choice.
 
