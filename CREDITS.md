@@ -1,6 +1,6 @@
 # Project Dependencies
     Package:   oxford_join
-    Version:   0.2.5
-    Generated: 2022-09-11 22:08:16 UTC
+    Version:   0.2.6
+    Generated: 2022-12-27 18:49:59 UTC
 
 This package has no dependencies.

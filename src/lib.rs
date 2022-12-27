@@ -1,10 +1,13 @@
 /*!
 # Oxford Join
 
-[![Documentation](https://docs.rs/oxford_join/badge.svg)](https://docs.rs/oxford_join/)
-[![Changelog](https://img.shields.io/crates/v/oxford_join.svg?label=Changelog&color=9cf)](https://github.com/Blobfolio/oxford_join/blob/master/CHANGELOG.md)
-[![crates.io](https://img.shields.io/crates/v/oxford_join.svg)](https://crates.io/crates/oxford_join)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](https://github.com/Blobfolio/oxford_join)
+[![docs.rs](https://img.shields.io/docsrs/oxford_join.svg?style=flat-square&label=docs.rs)](https://docs.rs/oxford_join/)
+[![changelog](https://img.shields.io/crates/v/oxford_join.svg?style=flat-square&label=changelog&color=9b59b6)](https://github.com/Blobfolio/oxford_join/blob/master/CHANGELOG.md)<br>
+[![crates.io](https://img.shields.io/crates/v/oxford_join.svg?style=flat-square&label=crates.io)](https://crates.io/crates/oxford_join)
+[![ci](https://img.shields.io/github/actions/workflow/status/Blobfolio/oxford_join/ci.yaml?style=flat-square&label=ci)](https://github.com/Blobfolio/oxford_join/actions)
+[![deps.rs](https://deps.rs/repo/github/blobfolio/oxford_join/status.svg?style=flat-square&label=deps.rs)](https://deps.rs/repo/github/blobfolio/oxford_join)<br>
+[![license](https://img.shields.io/badge/license-wtfpl-ff1493?style=flat-square)](https://en.wikipedia.org/wiki/WTFPL)
+[![contributions welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square&label=contributions)](https://github.com/Blobfolio/oxford_join/issues)
 
 Join a slice of strings with [Oxford Commas](https://en.wikipedia.org/wiki/Serial_comma) inserted as necessary, using the [`Conjunction`] of your choice.
 
@@ -395,46 +398,54 @@ impl<T> OxfordJoin for [T] where T: AsRef<str> {
 	#[allow(unsafe_code)]
 	/// # Oxford Join.
 	fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
-		match self.len() {
-			0 => Cow::Borrowed(""),
-			1 => Cow::Borrowed(self[0].as_ref()),
-			2 => {
-				let a = self[0].as_ref().as_bytes();
-				let b = self[1].as_ref().as_bytes();
+		// 2+ elements.
+		if let [first, mid @ .., last] = self {
+			let first = first.as_ref().as_bytes();
+			let last = last.as_ref().as_bytes();
 
-				let len = a.len() + b.len() + 2 + glue.len();
+			// 2 elements.
+			if mid.is_empty() {
+				let len = first.len() + last.len() + 2 + glue.len();
 				let mut v = Vec::with_capacity(len);
-				v.extend_from_slice(a);  // First.
+				v.extend_from_slice(first);  // First.
 				glue.append_two(&mut v); // Conjunction.
-				v.extend_from_slice(b);  // Last.
+				v.extend_from_slice(last);  // Last.
 
 				// Safety: strings in, strings out.
 				let out = unsafe { String::from_utf8_unchecked(v) };
 				Cow::Owned(out)
-			},
-			n => {
-				let last = n - 1;
-				let len = glue.len() + 1 + (last << 1) + self.iter().map(|x| x.as_ref().len()).sum::<usize>();
+			}
+			// 3+ elements.
+			else {
+				let len =
+					glue.len() + 1 +                                     // Glue length plus one trailing space.
+					((mid.len() + 1) << 1) +                             // Commaspace (2) for all but last entry.
+					first.len() + last.len() +                           // First and last item length.
+					mid.iter().map(|x| x.as_ref().len()).sum::<usize>(); // All other item lengths.
 				let mut v = Vec::with_capacity(len);
 
 				// Write the first.
-				v.extend_from_slice(self[0].as_ref().as_bytes());
+				v.extend_from_slice(first);
 
 				// Write the middles.
-				for s in &self[1..last] {
+				for s in mid {
 					v.extend_from_slice(COMMASPACE);
 					v.extend_from_slice(s.as_ref().as_bytes());
 				}
 
 				// Write the conjunction and last.
 				glue.append_to(&mut v);
-				v.extend_from_slice(self[last].as_ref().as_bytes());
+				v.extend_from_slice(last);
 
 				// Safety: strings in, strings out.
 				let out = unsafe { String::from_utf8_unchecked(v) };
 				Cow::Owned(out)
-			},
+			}
 		}
+		// One element.
+		else if self.len() == 1 { Cow::Borrowed(self[0].as_ref()) }
+		// No elements.
+		else { Cow::Borrowed("") }
 	}
 }
 
