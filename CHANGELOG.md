@@ -7,6 +7,7 @@
 ### Changed
 
 * Minor performance improvement for slice joins
+* Improve badge consistency (docs)
 
 
 
