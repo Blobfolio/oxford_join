@@ -398,46 +398,54 @@ impl<T> OxfordJoin for [T] where T: AsRef<str> {
 	#[allow(unsafe_code)]
 	/// # Oxford Join.
 	fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
-		match self.len() {
-			0 => Cow::Borrowed(""),
-			1 => Cow::Borrowed(self[0].as_ref()),
-			2 => {
-				let a = self[0].as_ref().as_bytes();
-				let b = self[1].as_ref().as_bytes();
+		// 2+ elements.
+		if let [first, mid @ .., last] = self {
+			let first = first.as_ref().as_bytes();
+			let last = last.as_ref().as_bytes();
 
-				let len = a.len() + b.len() + 2 + glue.len();
+			// 2 elements.
+			if mid.is_empty() {
+				let len = first.len() + last.len() + 2 + glue.len();
 				let mut v = Vec::with_capacity(len);
-				v.extend_from_slice(a);  // First.
+				v.extend_from_slice(first);  // First.
 				glue.append_two(&mut v); // Conjunction.
-				v.extend_from_slice(b);  // Last.
+				v.extend_from_slice(last);  // Last.
 
 				// Safety: strings in, strings out.
 				let out = unsafe { String::from_utf8_unchecked(v) };
 				Cow::Owned(out)
-			},
-			n => {
-				let last = n - 1;
-				let len = glue.len() + 1 + (last << 1) + self.iter().map(|x| x.as_ref().len()).sum::<usize>();
+			}
+			// 3+ elements.
+			else {
+				let len =
+					glue.len() + 1 +                                     // Glue length plus one trailing space.
+					((mid.len() + 1) << 1) +                             // Commaspace (2) for all but last entry.
+					first.len() + last.len() +                           // First and last item length.
+					mid.iter().map(|x| x.as_ref().len()).sum::<usize>(); // All other item lengths.
 				let mut v = Vec::with_capacity(len);
 
 				// Write the first.
-				v.extend_from_slice(self[0].as_ref().as_bytes());
+				v.extend_from_slice(first);
 
 				// Write the middles.
-				for s in &self[1..last] {
+				for s in mid {
 					v.extend_from_slice(COMMASPACE);
 					v.extend_from_slice(s.as_ref().as_bytes());
 				}
 
 				// Write the conjunction and last.
 				glue.append_to(&mut v);
-				v.extend_from_slice(self[last].as_ref().as_bytes());
+				v.extend_from_slice(last);
 
 				// Safety: strings in, strings out.
 				let out = unsafe { String::from_utf8_unchecked(v) };
 				Cow::Owned(out)
-			},
+			}
 		}
+		// One element.
+		else if self.len() == 1 { Cow::Borrowed(self[0].as_ref()) }
+		// No elements.
+		else { Cow::Borrowed("") }
 	}
 }
 

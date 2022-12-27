@@ -2,6 +2,14 @@
 
 
 
+## [0.2.6](https://github.com/Blobfolio/oxford_join/releases/tag/v0.2.6) - 2022-12-27
+
+### Changed
+
+* Minor performance improvement for slice joins
+
+
+
 ## [0.2.5](https://github.com/Blobfolio/oxford_join/releases/tag/v0.2.5) - 2022-09-11
 
 ### New
