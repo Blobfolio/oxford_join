@@ -2,6 +2,14 @@
 
 
 
+## [0.2.7](https://github.com/Blobfolio/oxford_join/releases/tag/v0.2.7) - 2023-01-26
+
+### Changed
+
+* Bump brunch `0.4`
+
+
+
 ## [0.2.6](https://github.com/Blobfolio/oxford_join/releases/tag/v0.2.6) - 2022-12-27
 
 ### Changed
