@@ -2,6 +2,12 @@
 
 
 
+## [0.2.8](https://github.com/Blobfolio/oxford_join/releases/tag/v0.2.8) - 2023-06-01
+
+This release improves unit test coverage, but has no particular user-facing changes.
+
+
+
 ## [0.2.7](https://github.com/Blobfolio/oxford_join/releases/tag/v0.2.7) - 2023-01-26
 
 ### Changed
