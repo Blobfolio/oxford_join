@@ -407,8 +407,8 @@ impl<T> OxfordJoin for [T] where T: AsRef<str> {
 			if mid.is_empty() {
 				let len = first.len() + last.len() + 2 + glue.len();
 				let mut v = Vec::with_capacity(len);
-				v.extend_from_slice(first);  // First.
-				glue.append_two(&mut v); // Conjunction.
+				v.extend_from_slice(first); // First.
+				glue.append_two(&mut v);    // Conjunction.
 				v.extend_from_slice(last);  // Last.
 
 				// Safety: strings in, strings out.
@@ -419,7 +419,7 @@ impl<T> OxfordJoin for [T] where T: AsRef<str> {
 			else {
 				let len =
 					glue.len() + 1 +                                     // Glue length plus one trailing space.
-					((mid.len() + 1) << 1) +                             // Commaspace (2) for all but last entry.
+					((mid.len() + 1) * 2) +                              // Commaspace (2) for all but last entry.
 					first.len() + last.len() +                           // First and last item length.
 					mid.iter().map(|x| x.as_ref().len()).sum::<usize>(); // All other item lengths.
 				let mut v = Vec::with_capacity(len);
@@ -579,7 +579,7 @@ macro_rules! join_btrees {
 				},
 				n => {
 					let last = n - 1;
-					let len = glue.len() + 1 + (last << 1) + self.$iter().map(|x| x.as_ref().len()).sum::<usize>();
+					let len = glue.len() + 1 + last * 2 + self.$iter().map(|x| x.as_ref().len()).sum::<usize>();
 
 					let mut v = Vec::with_capacity(len);
 					let mut iter = self.$iter();
