@@ -1,0 +1,49 @@
+name: no_std
+
+on:
+  push:
+    branches: []
+  pull_request:
+    branches: []
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  all:
+    name: All
+
+    strategy:
+      matrix:
+        target:
+        - x86_64-unknown-linux-gnu
+        include:
+        - target: x86_64-unknown-linux-gnu
+          os:     ubuntu-latest
+
+    runs-on: ${{matrix.os}}
+
+    env:
+      RUSTFLAGS: "-D warnings"
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: dtolnay/rust-toolchain@nightly
+      with:
+        targets: ${{ matrix.target }}
+    - uses: taiki-e/install-action@v2
+      with:
+        tool: cargo-no-std-check
+
+    - name: Info
+      run: |
+        rustup --version
+        cargo --version
+
+    - name: no_std
+      run: |
+        cargo no-std-check
