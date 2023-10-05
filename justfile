@@ -119,6 +119,7 @@ version:
 
 	# Set the release version!
 	just _version "{{ justfile_directory() }}" "$_ver2"
+	just credits
 
 
 # Set version for real.
