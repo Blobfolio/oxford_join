@@ -50,25 +50,49 @@ assert_eq!(set.oxford_or(), "Apples, Oranges, or Bananas");
 That's all, folks!
 */
 
-#![deny(unsafe_code)]
+#![deny(
+	// TODO: clippy::allow_attributes_without_reason,
+	clippy::correctness,
+	unreachable_pub,
+	unsafe_code,
+)]
 
 #![warn(
-	clippy::filetype_is_file,
-	clippy::integer_division,
-	clippy::needless_borrow,
+	clippy::complexity,
 	clippy::nursery,
 	clippy::pedantic,
 	clippy::perf,
-	clippy::suboptimal_flops,
+	clippy::style,
+
+	// TODO: clippy::allow_attributes,
+	clippy::clone_on_ref_ptr,
+	clippy::create_dir,
+	clippy::filetype_is_file,
+	clippy::format_push_string,
+	clippy::get_unwrap,
+	clippy::impl_trait_in_params,
+	clippy::lossy_float_literal,
+	clippy::missing_assert_message,
+	clippy::missing_docs_in_private_items,
+	clippy::needless_raw_strings,
+	clippy::panic_in_result_fn,
+	clippy::pub_without_shorthand,
+	clippy::rest_pat_in_fully_bound_structs,
+	clippy::semicolon_inside_block,
+	clippy::str_to_string,
+	clippy::string_to_string,
+	clippy::todo,
+	clippy::undocumented_unsafe_blocks,
 	clippy::unneeded_field_pattern,
+	clippy::unseparated_literal_suffix,
+	clippy::unwrap_in_result,
+
 	macro_use_extern_crate,
 	missing_copy_implementations,
-	missing_debug_implementations,
 	missing_docs,
 	non_ascii_idents,
 	trivial_casts,
 	trivial_numeric_casts,
-	unreachable_pub,
 	unused_crate_dependencies,
 	unused_extern_crates,
 	unused_import_braces,
@@ -395,7 +419,7 @@ pub trait OxfordJoin {
 }
 
 impl<T> OxfordJoin for [T] where T: AsRef<str> {
-	#[allow(unsafe_code)]
+	#[allow(unsafe_code)] // Strings in, strings out.
 	/// # Oxford Join.
 	fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
 		// 2+ elements.
@@ -468,7 +492,7 @@ impl<T> OxfordJoin for [T; 1] where T: AsRef<str> {
 }
 
 impl<T> OxfordJoin for [T; 2] where T: AsRef<str> {
-	#[allow(unsafe_code)]
+	#[allow(unsafe_code)] // Strings in, strings out.
 	#[inline]
 	/// # Oxford Join.
 	///
@@ -493,7 +517,7 @@ impl<T> OxfordJoin for [T; 2] where T: AsRef<str> {
 macro_rules! join_arrays {
 	($($num:literal $pad:literal $last:literal),+ $(,)?) => ($(
 		impl<T> OxfordJoin for [T; $num] where T: AsRef<str> {
-			#[allow(unsafe_code)]
+			#[allow(unsafe_code)] // Strings in, strings out.
 			/// # Oxford Join.
 			fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
 				let len = glue.len() + $pad + self.iter().map(|x| x.as_ref().len()).sum::<usize>();
@@ -554,9 +578,10 @@ join_arrays!(
 	32 63 31,
 );
 
+/// # Helper: Binary Tree Joins.
 macro_rules! join_btrees {
 	($iter:ident) => (
-		#[allow(unsafe_code)]
+		#[allow(unsafe_code)] // Strings in, strings out.
 		/// # Oxford Join.
 		fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
 			match self.len() {
@@ -630,6 +655,7 @@ mod tests {
 	];
 
 	#[test]
+	#[allow(clippy::cognitive_complexity)] // It is what it is.
 	fn t_fruit() {
 		// Make sure arrays, slices, vecs, boxes, etc., all work out the same
 		// way.
@@ -683,7 +709,6 @@ mod tests {
 	}
 
 	#[test]
-	#[allow(unsafe_code)]
 	fn conjunction_append() {
 		for c in CTEST {
 			// Two.
