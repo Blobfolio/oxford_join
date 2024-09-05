@@ -2,6 +2,15 @@
 
 
 
+## [0.2.10](https://github.com/Blobfolio/oxford_join/releases/tag/v0.2.10) - 2024-09-05
+
+### Changed
+
+* Miscellaneous code cleanup and lints
+* Bump `brunch` to `0.6`
+
+
+
 ## [0.2.9](https://github.com/Blobfolio/oxford_join/releases/tag/v0.2.9) - 2023-10-05
 
 ### Changed
