@@ -15,7 +15,7 @@ Join a slice of strings with [Oxford Commas](https://en.wikipedia.org/wiki/Seria
 
 The return formatting depends on the size of the set:
 
-```ignore,text
+```text
 0: ""
 1: "first"
 2: "first <CONJUNCTION> last"
@@ -127,7 +127,7 @@ const COMMASPACE: &[u8] = b", ";
 #[derive(Debug, Copy, Clone, Default, Eq, Hash, PartialEq)]
 /// # Conjunction.
 ///
-/// This is the glue used to bind the last entry in an [`oxford_join`]ed set.
+/// This is the glue used to bind the last entry in an [`oxford_join`](OxfordJoin::oxford_join)ed set.
 ///
 /// If you're doing something weird and the preset entries aren't currint it
 /// for you, you can use [`Conjunction::Other`], which wraps an `&str`. This
@@ -137,12 +137,12 @@ const COMMASPACE: &[u8] = b", ";
 /// ## Examples.
 ///
 /// If a set has exactly two items:
-/// ```ignore,text
+/// ```text
 /// first <CONJUNCTION> last
 /// ```
 ///
 /// If a set has three or more items:
-/// ```ignore,text
+/// ```text
 /// first, second, …, <CONJUNCTION> last
 /// ```
 ///
@@ -330,7 +330,7 @@ impl Conjunction<'_> {
 ///
 /// The return formatting depends on the size of the set:
 ///
-/// ```ignore,text
+/// ```text
 /// "" // Zero.
 /// "first" // One.
 /// "first <CONJUNCTION> last" // Two.
@@ -496,7 +496,7 @@ impl<T> OxfordJoin for [T; 2] where T: AsRef<str> {
 	#[inline]
 	/// # Oxford Join.
 	///
-	/// This is a special case; it will always read "first <CONJUNCTION> last".
+	/// This is a special case; it will always read "first CONJUNCTION last".
 	fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
 		let a = self[0].as_ref().as_bytes();
 		let b = self[1].as_ref().as_bytes();
