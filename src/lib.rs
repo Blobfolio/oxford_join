@@ -699,22 +699,23 @@ impl<'a, T: fmt::Display> fmt::Display for OxfordJoinFmt<'a, T> {
 		use core::cmp::Ordering;
 
 		// Split off the last part, or quit because the set is empty.
-		let Some((last, rest)) = self.inner.split_last() else { return Ok(()); };
+		if let Some((last, rest)) = self.inner.split_last() {
+			// If last is all we have, it's all we print!
+			match rest.len().cmp(&1) {
+				// Last is all there is.
+				Ordering::Less => write!(f, "{last}"),
 
-		// If last is all we have, it's all we print!
-		match rest.len().cmp(&1) {
-			// Last is all there is.
-			Ordering::Less => write!(f, "{last}"),
+				// Just one thing.
+				Ordering::Equal => write!(f, "{} {} {last}", rest[0], self.glue),
 
-			// Just one thing.
-			Ordering::Equal => write!(f, "{} {} {last}", rest[0], self.glue),
-
-			// Many things.
-			Ordering::Greater => {
-				for v in rest { write!(f, "{v}, ")?; }
-				write!(f, "{} {last}", self.glue)
-			},
+				// Many things.
+				Ordering::Greater => {
+					for v in rest { write!(f, "{v}, ")?; }
+					write!(f, "{} {last}", self.glue)
+				},
+			}
 		}
+		else { Ok(()) }
 	}
 }
 
