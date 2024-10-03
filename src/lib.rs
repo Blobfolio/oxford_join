@@ -55,8 +55,8 @@ implement `Display` but not `AsRef<str>`.
 use oxford_join::OxfordJoinFmt;
 let set = ["Apples", "Oranges", "Bananas"];
 assert_eq!(
-	format!("I eat {}.", OxfordJoinFmt::and(&set)),
-	"I eat Apples, Oranges, and Bananas.",
+    format!("I eat {}.", OxfordJoinFmt::and(&set)),
+    "I eat Apples, Oranges, and Bananas.",
 );
 ```
 
