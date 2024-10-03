@@ -15,7 +15,7 @@ Join a slice of strings with [Oxford Commas](https://en.wikipedia.org/wiki/Seria
 
 The return formatting depends on the size of the set:
 
-```ignore,text
+```text
 0: ""
 1: "first"
 2: "first <CONJUNCTION> last"
@@ -45,6 +45,19 @@ assert_eq!(set.oxford_and(), "Apples, Oranges, and Bananas");
 assert_eq!(set.oxford_and_or(), "Apples, Oranges, and/or Bananas");
 assert_eq!(set.oxford_nor(), "Apples, Oranges, nor Bananas");
 assert_eq!(set.oxford_or(), "Apples, Oranges, or Bananas");
+```
+
+There is also a [`Display`](fmt::Display)-based [`OxfordJoinFmt`] wrapper
+that can be more efficient for `format!`-type use cases, or types which
+implement `Display` but not `AsRef<str>`.
+
+```
+use oxford_join::OxfordJoinFmt;
+let set = ["Apples", "Oranges", "Bananas"];
+assert_eq!(
+	format!("I eat {}.", OxfordJoinFmt::and(&set)),
+	"I eat Apples, Oranges, and Bananas.",
+);
 ```
 
 That's all, folks!
@@ -127,7 +140,7 @@ const COMMASPACE: &[u8] = b", ";
 #[derive(Debug, Copy, Clone, Default, Eq, Hash, PartialEq)]
 /// # Conjunction.
 ///
-/// This is the glue used to bind the last entry in an [`oxford_join`]ed set.
+/// This is the glue used to bind the last entry in an [`oxford_join`](OxfordJoin::oxford_join)ed set.
 ///
 /// If you're doing something weird and the preset entries aren't currint it
 /// for you, you can use [`Conjunction::Other`], which wraps an `&str`. This
@@ -137,12 +150,12 @@ const COMMASPACE: &[u8] = b", ";
 /// ## Examples.
 ///
 /// If a set has exactly two items:
-/// ```ignore,text
+/// ```text
 /// first <CONJUNCTION> last
 /// ```
 ///
 /// If a set has three or more items:
-/// ```ignore,text
+/// ```text
 /// first, second, …, <CONJUNCTION> last
 /// ```
 ///
@@ -330,7 +343,7 @@ impl Conjunction<'_> {
 ///
 /// The return formatting depends on the size of the set:
 ///
-/// ```ignore,text
+/// ```text
 /// "" // Zero.
 /// "first" // One.
 /// "first <CONJUNCTION> last" // Two.
@@ -496,7 +509,7 @@ impl<T> OxfordJoin for [T; 2] where T: AsRef<str> {
 	#[inline]
 	/// # Oxford Join.
 	///
-	/// This is a special case; it will always read "first <CONJUNCTION> last".
+	/// This is a special case; it will always read "first CONJUNCTION last".
 	fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
 		let a = self[0].as_ref().as_bytes();
 		let b = self[1].as_ref().as_bytes();
@@ -639,6 +652,196 @@ impl<T> OxfordJoin for BTreeSet<T> where T: AsRef<str> { join_btrees!(iter); }
 
 
 
+/// # [`Display`](fmt::Display)-Based Join Wrapper.
+///
+/// This struct offers a [`Display`](fmt::Display)-based alternative to the
+/// main [`OxfordJoin`] trait.
+///
+/// In situations where joined output is only needed for the likes of
+/// `format!`, `println!`, etc., this can help avoid unnecessary allocation.
+///
+/// Note that unlike the main trait, this does not require `T: AsRef<str>`. It
+/// does, however, require a slice-based set.
+///
+/// ## Examples
+///
+/// ```
+/// use oxford_join::{Conjunction, OxfordJoinFmt};
+///
+/// let set = ["Apples"];
+/// assert_eq!(
+///     OxfordJoinFmt::new(&set, Conjunction::And).to_string(),
+///     "Apples",
+/// );
+///
+/// let set = ["Apples", "Oranges"];
+/// assert_eq!(
+///     OxfordJoinFmt::new(&set, Conjunction::Or).to_string(),
+///     "Apples or Oranges",
+/// );
+///
+/// let set = ["Apples", "Oranges", "Bananas"];
+/// assert_eq!(
+///     OxfordJoinFmt::new(&set, Conjunction::AndOr).to_string(),
+///     "Apples, Oranges, and/or Bananas",
+/// );
+/// ```
+pub struct OxfordJoinFmt<'a, T: fmt::Display> {
+	/// # The Set.
+	inner: &'a [T],
+
+	/// # The Glue.
+	glue: Conjunction<'a>,
+}
+
+impl<'a, T: fmt::Display> fmt::Display for OxfordJoinFmt<'a, T> {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		use core::cmp::Ordering;
+
+		// Split off the last part, or quit because the set is empty.
+		let Some((last, rest)) = self.inner.split_last() else { return Ok(()); };
+
+		// If last is all we have, it's all we print!
+		match rest.len().cmp(&1) {
+			// Last is all there is.
+			Ordering::Less => write!(f, "{last}"),
+
+			// Just one thing.
+			Ordering::Equal => write!(f, "{} {} {last}", rest[0], self.glue),
+
+			// Many things.
+			Ordering::Greater => {
+				for v in rest { write!(f, "{v}, ")?; }
+				write!(f, "{} {last}", self.glue)
+			},
+		}
+	}
+}
+
+impl<'a, T: fmt::Display> OxfordJoinFmt<'a, T> {
+	#[inline]
+	/// # Oxford Join.
+	///
+	/// Return a wrapper for the set with the desired conjunction.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use oxford_join::{Conjunction, OxfordJoinFmt};
+	///
+	/// let set = ["Apples", "Oranges"];
+	/// assert_eq!(
+	///     OxfordJoinFmt::new(set.as_slice(), Conjunction::Ampersand).to_string(),
+	///     "Apples & Oranges",
+	/// );
+	/// ```
+	pub const fn new(set: &'a [T], glue: Conjunction<'a>) -> Self {
+		Self { inner: set, glue }
+	}
+
+	#[inline]
+	/// # Oxford Join (and).
+	///
+	/// This is equivalent to passing [`Conjunction::And`] to
+	/// [`OxfordJoinFmt::new`].
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use oxford_join::OxfordJoinFmt;
+	///
+	/// let set = ["Apples", "Oranges"];
+	/// assert_eq!(
+	///     OxfordJoinFmt::and(set.as_slice()).to_string(),
+	///     "Apples and Oranges",
+	/// );
+	/// ```
+	pub const fn and(set: &'a [T]) -> Self { Self::new(set, Conjunction::And) }
+
+	#[inline]
+	/// # Oxford Join (and/or).
+	///
+	/// This is equivalent to passing [`Conjunction::AndOr`] to
+	/// [`OxfordJoinFmt::new`].
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use oxford_join::OxfordJoinFmt;
+	///
+	/// let set = ["Apples", "Oranges"];
+	/// assert_eq!(
+	///     OxfordJoinFmt::and_or(set.as_slice()).to_string(),
+	///     "Apples and/or Oranges",
+	/// );
+	/// ```
+	pub const fn and_or(set: &'a [T]) -> Self { Self::new(set, Conjunction::AndOr) }
+
+	#[inline]
+	/// # Oxford Join (nor).
+	///
+	/// This is equivalent to passing [`Conjunction::Nor`] to
+	/// [`OxfordJoinFmt::new`].
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use oxford_join::OxfordJoinFmt;
+	///
+	/// let set = ["Apples", "Oranges"];
+	/// assert_eq!(
+	///     OxfordJoinFmt::nor(set.as_slice()).to_string(),
+	///     "Apples nor Oranges",
+	/// );
+	/// ```
+	pub const fn nor(set: &'a [T]) -> Self { Self::new(set, Conjunction::Nor) }
+
+	#[inline]
+	/// # Oxford Join (or).
+	///
+	/// This is equivalent to passing [`Conjunction::Or`] to
+	/// [`OxfordJoinFmt::new`].
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use oxford_join::OxfordJoinFmt;
+	///
+	/// let set = ["Apples", "Oranges"];
+	/// assert_eq!(
+	///     OxfordJoinFmt::or(set.as_slice()).to_string(),
+	///     "Apples or Oranges",
+	/// );
+	/// ```
+	pub const fn or(set: &'a [T]) -> Self { Self::new(set, Conjunction::Or) }
+}
+
+impl<'a, T: AsRef<str> + fmt::Display> OxfordJoinFmt<'a, T> {
+	#[must_use]
+	/// # Join the Regular Way.
+	///
+	/// Join and return a string with commas in all the right places, same as
+	/// calling [`OxfordJoin::oxford_join`] directly on the set, but without
+	/// the need to re-specify the conjunction.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use oxford_join::OxfordJoinFmt;
+	///
+	/// let set = ["Apples", "Oranges"];
+	/// assert_eq!(
+	///     OxfordJoinFmt::or(set.as_slice()).join(),
+	///     "Apples or Oranges",
+	/// );
+	/// ```
+	pub fn join(&'a self) -> Cow<'a, str> {
+		self.inner.oxford_join(self.glue)
+	}
+}
+
+
+
 #[cfg(test)]
 mod tests {
 	use super::*;
@@ -657,6 +860,8 @@ mod tests {
 	#[test]
 	#[allow(clippy::cognitive_complexity)] // It is what it is.
 	fn t_fruit() {
+		use alloc::string::ToString;
+
 		// Make sure arrays, slices, vecs, boxes, etc., all work out the same
 		// way.
 		macro_rules! compare {
@@ -673,6 +878,17 @@ mod tests {
 
 				let v = BTreeSet::from($arr);
 				assert_eq!(v.oxford_and(), $expected, "BTreeSet.");
+
+				assert_eq!(
+					OxfordJoinFmt::and($arr.as_slice()).join(),
+					$expected,
+					"OxfordJoinFmt::join",
+				);
+				assert_eq!(
+					OxfordJoinFmt::and($arr.as_slice()).to_string(),
+					$expected,
+					"OxfordJoinFmt::to_string",
+				);
 			)+);
 		}
 

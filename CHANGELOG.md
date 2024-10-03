@@ -2,6 +2,18 @@
 
 
 
+## [0.3.0](https://github.com/Blobfolio/oxford_join/releases/tag/v0.3.0) - 2024-10-03
+
+### New
+
+* Display-based `OxfordJoinFmt` wrapper
+
+### Changed
+
+* Miscellaneous code cleanup and lints
+
+
+
 ## [0.2.10](https://github.com/Blobfolio/oxford_join/releases/tag/v0.2.10) - 2024-09-05
 
 ### Changed
