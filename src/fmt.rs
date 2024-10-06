@@ -175,27 +175,3 @@ impl<'a, T: fmt::Display> OxfordJoinFmt<'a, T> {
 	/// ```
 	pub const fn or(set: &'a [T]) -> Self { Self::new(set, Conjunction::Or) }
 }
-
-impl<'a, T: AsRef<str> + fmt::Display> OxfordJoinFmt<'a, T> {
-	#[must_use]
-	/// # Join the Regular Way.
-	///
-	/// Join and return a string with commas in all the right places, same as
-	/// calling [`OxfordJoin::oxford_join`] directly on the set, but without
-	/// the need to re-specify the conjunction.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use oxford_join::OxfordJoinFmt;
-	///
-	/// let set = ["Apples", "Oranges"];
-	/// assert_eq!(
-	///     OxfordJoinFmt::or(set.as_slice()).join(),
-	///     "Apples or Oranges",
-	/// );
-	/// ```
-	pub fn join(&'a self) -> Cow<'a, str> {
-		self.inner.oxford_join(self.glue)
-	}
-}
