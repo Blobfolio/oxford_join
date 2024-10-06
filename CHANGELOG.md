@@ -2,6 +2,22 @@
 
 
 
+## [0.4.0](https://github.com/Blobfolio/oxford_join/releases/tag/v0.4.0) - 2024-10-06
+
+### New
+
+* Display-based `JoinFmt` wrapper
+
+### Changed
+
+* Bump MSRV to `1.81`
+
+### Removed
+
+* `OxfordJoinFmt::join`
+
+
+
 ## [0.3.0](https://github.com/Blobfolio/oxford_join/releases/tag/v0.3.0) - 2024-10-03
 
 ### New
