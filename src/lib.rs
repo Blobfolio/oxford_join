@@ -47,7 +47,7 @@ assert_eq!(set.oxford_nor(), "Apples, Oranges, nor Bananas");
 assert_eq!(set.oxford_or(), "Apples, Oranges, or Bananas");
 ```
 
-There is also a [`Display`](fmt::Display)-based [`OxfordJoinFmt`] wrapper
+There is also a [`Display`](core::fmt::Display)-based [`OxfordJoinFmt`] wrapper
 that can be more efficient for `format!`-type use cases, or types which
 implement `Display` but not `AsRef<str>`.
 
@@ -120,7 +120,10 @@ extern crate alloc;
 mod fmt;
 
 // Re-export.
-pub use fmt::OxfordJoinFmt;
+pub use fmt::{
+	JoinFmt,
+	OxfordJoinFmt,
+};
 
 use alloc::{
 	borrow::Cow,
@@ -695,11 +698,6 @@ mod tests {
 				let v = BTreeSet::from($arr);
 				assert_eq!(v.oxford_and(), $expected, "BTreeSet.");
 
-				assert_eq!(
-					OxfordJoinFmt::and($arr.as_slice()).join(),
-					$expected,
-					"OxfordJoinFmt::join",
-				);
 				assert_eq!(
 					OxfordJoinFmt::and($arr.as_slice()).to_string(),
 					$expected,
