@@ -441,7 +441,7 @@ pub trait OxfordJoin {
 }
 
 impl<T> OxfordJoin for [T] where T: AsRef<str> {
-	#[allow(unsafe_code)] // Strings in, strings out.
+	#[expect(unsafe_code, reason = "Strings in, strings out.")]
 	/// # Oxford Join.
 	fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
 		// 2+ elements.
@@ -514,7 +514,7 @@ impl<T> OxfordJoin for [T; 1] where T: AsRef<str> {
 }
 
 impl<T> OxfordJoin for [T; 2] where T: AsRef<str> {
-	#[allow(unsafe_code)] // Strings in, strings out.
+	#[expect(unsafe_code, reason = "Strings in, strings out.")]
 	#[inline]
 	/// # Oxford Join.
 	///
@@ -539,7 +539,7 @@ impl<T> OxfordJoin for [T; 2] where T: AsRef<str> {
 macro_rules! join_arrays {
 	($($num:literal $pad:literal $last:literal),+ $(,)?) => ($(
 		impl<T> OxfordJoin for [T; $num] where T: AsRef<str> {
-			#[allow(unsafe_code)] // Strings in, strings out.
+			#[expect(unsafe_code, reason = "Strings in, strings out.")]
 			/// # Oxford Join.
 			fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
 				let len = glue.len() + $pad + self.iter().map(|x| x.as_ref().len()).sum::<usize>();
@@ -603,7 +603,7 @@ join_arrays!(
 /// # Helper: Binary Tree Joins.
 macro_rules! join_btrees {
 	($iter:ident) => (
-		#[allow(unsafe_code)] // Strings in, strings out.
+		#[expect(unsafe_code, reason = "Strings in, strings out.")]
 		/// # Oxford Join.
 		fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
 			match self.len() {

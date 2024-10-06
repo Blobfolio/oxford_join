@@ -11,6 +11,7 @@
 ### Changed
 
 * Bump MSRV to `1.81`
+* Miscellaneous code cleanup and lints
 
 ### Removed
 
