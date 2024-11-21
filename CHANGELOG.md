@@ -2,6 +2,14 @@
 
 
 
+## [0.4.1](https://github.com/Blobfolio/oxford_join/releases/tag/v0.4.1) - TBD
+
+### Changed
+
+* Improve performance of `Conjunction::oxford_join`
+
+
+
 ## [0.4.0](https://github.com/Blobfolio/oxford_join/releases/tag/v0.4.0) - 2024-10-06
 
 ### New
