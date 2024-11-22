@@ -168,7 +168,7 @@ pub struct OxfordJoinFmt<'a, T: fmt::Display> {
 	glue: Conjunction<'a>,
 }
 
-impl<'a, T: fmt::Display> fmt::Display for OxfordJoinFmt<'a, T> {
+impl<T: fmt::Display> fmt::Display for OxfordJoinFmt<'_, T> {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		use core::cmp::Ordering;
 
