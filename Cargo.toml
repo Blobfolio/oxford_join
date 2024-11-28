@@ -1,7 +1,7 @@
 [package]
 name = "oxford_join"
-version = "0.4.0"
-authors = ["Blobfolio, LLC. <hello@blobfolio.com>"]
+version = "0.4.1"
+authors = ["Josh Stoik <josh@blobfolio.com>"]
 edition = "2021"
 rust-version = "1.81"
 description = "Join string slices with Oxford Commas!"
@@ -20,12 +20,9 @@ exclude = [
 
 [package.metadata.bashman]
 name = "Oxford Join"
-bash-dir = "./"
-man-dir = "./"
-credits-dir = "./"
 
 [dev-dependencies]
-brunch = "0.6.*"
+brunch = "0.7.*"
 
 [[bench]]
 name = "oj_join"

@@ -271,10 +271,9 @@ impl Conjunction<'_> {
 	/// This convenience method allows you to Oxford-join _any_ iterable data
 	/// source that yields `AsRef<str>`.
 	///
-	/// If your data type implements [`OxfordJoin`], you should use its
-	/// [`OxfordJoin::oxford_join`] implementation instead as that will be
-	/// faster — they're _specialized_ — but you'll get the same result either
-	/// way.
+	/// For types that implement [`OxfordJoin`] directly, the trait methods
+	/// should be preferred as they're specialized, but you'll get the same
+	/// answer either way.
 	///
 	/// ## Examples
 	///
@@ -282,23 +281,45 @@ impl Conjunction<'_> {
 	/// use oxford_join::{Conjunction, OxfordJoin};
 	/// const LIST: [&str; 3] = ["Apples", "Bananas", "Carrots"];
 	///
-	/// // Arrays, for example, implement OxfordJoin, so you should leverage
-	/// // the trait method instead.
-	/// assert_eq!(LIST.oxford_join(Conjunction::And), "Apples, Bananas, and Carrots");
-	///
-	/// // But if you use this method anyway, you'll get the same answer:
-	/// assert_eq!(Conjunction::And.oxford_join(LIST), "Apples, Bananas, and Carrots");
-	///
-	/// // A more appropriate use case for this method would be something like
-	/// // the following:
+	/// // A contrived example to spell it out…
 	/// assert_eq!(
-	///     Conjunction::And.oxford_join("hello".chars().map(|c| c.to_string())),
+	///     Conjunction::And.oxford_join("hello".chars().map(String::from)),
 	///     "h, e, l, l, and o"
 	/// );
 	/// ```
 	pub fn oxford_join<I, T>(&self, iter: I) -> String
 	where T: AsRef<str>, I: IntoIterator<Item=T> {
-		iter.into_iter().collect::<Vec<_>>().oxford_join(*self).into_owned()
+		// Pull the first value, ensuring there actually is one.
+		let mut iter = iter.into_iter();
+		let Some(next) = iter.next() else { return String::new(); };
+
+		// MAGIC NUMBER: one fuzzy preallocation improves collection times a
+		// lot compared to separate item-by-item reserves.
+		let mut out = String::with_capacity(64);
+		out.push_str(next.as_ref());
+
+		// We have a second item!
+		if let Some(mut buf) = iter.next() {
+			// Can we get an Nth?!
+			let mut many = false;
+			for next in iter.map(|n| core::mem::replace(&mut buf, n)) {
+				// Add the _previous_ value to the output. (The "current" value
+				// is now in the buffer.)
+				out.push_str(", ");
+				out.push_str(next.as_ref());
+				many = true;
+			}
+
+			// Add the final punctuation and conjunction.
+			if many { out.push_str(", "); } else { out.push(' '); }
+			out.push_str(self.as_str());
+			out.push(' ');
+
+			// Cap it off with the last item.
+			out.push_str(buf.as_ref());
+		}
+
+		out
 	}
 }
 
