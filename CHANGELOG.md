@@ -2,11 +2,14 @@
 
 
 
-## [0.4.1](https://github.com/Blobfolio/oxford_join/releases/tag/v0.4.1) - TBD
+## [0.4.1](https://github.com/Blobfolio/oxford_join/releases/tag/v0.4.1) - 2024-11-28
 
 ### Changed
 
+* Bump `brunch` to `0.7` (dev)
 * Improve performance of `Conjunction::oxford_join`
+* Miscellaneous code cleanup and lints
+* Improve docs
 
 
 
