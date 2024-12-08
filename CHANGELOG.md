@@ -2,6 +2,14 @@
 
 
 
+## [0.4.2](https://github.com/Blobfolio/oxford_join/releases/tag/v0.4.2) - TBD
+
+### Changed
+
+* Bump `brunch` to `0.8` (dev)
+
+
+
 ## [0.4.1](https://github.com/Blobfolio/oxford_join/releases/tag/v0.4.1) - 2024-11-28
 
 ### Changed
