@@ -2,7 +2,7 @@
 
 
 
-## [0.4.2](https://github.com/Blobfolio/oxford_join/releases/tag/v0.4.2) - TBD
+## [0.4.2](https://github.com/Blobfolio/oxford_join/releases/tag/v0.4.2) - 2025-01-09
 
 ### Changed
 
