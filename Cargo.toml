@@ -1,6 +1,6 @@
 [package]
 name = "oxford_join"
-version = "0.4.1"
+version = "0.4.2"
 authors = ["Josh Stoik <josh@blobfolio.com>"]
 edition = "2021"
 rust-version = "1.81"
@@ -22,7 +22,7 @@ exclude = [
 name = "Oxford Join"
 
 [dev-dependencies]
-brunch = "0.7.*"
+brunch = "0.8.*"
 
 [[bench]]
 name = "oj_join"
