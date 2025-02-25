@@ -698,7 +698,7 @@ mod tests {
 	];
 
 	#[test]
-	#[allow(clippy::cognitive_complexity)] // It is what it is.
+	#[expect(clippy::cognitive_complexity, reason = "It is what it is.")]
 	fn t_fruit() {
 		use alloc::string::ToString;
 
