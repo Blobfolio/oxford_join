@@ -2,6 +2,15 @@
 
 
 
+## [0.5.0](https://github.com/Blobfolio/oxford_join/releases/tag/v0.5.0) - TBD
+
+### Changed
+
+* Bump MSRV to `1.85`
+* Bump Rust edition to `2024`
+
+
+
 ## [0.4.2](https://github.com/Blobfolio/oxford_join/releases/tag/v0.4.2) - 2025-01-09
 
 ### Changed
