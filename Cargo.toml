@@ -1,6 +1,6 @@
 [package]
 name = "oxford_join"
-version = "0.4.2"
+version = "0.5.0"
 authors = ["Josh Stoik <josh@blobfolio.com>"]
 edition = "2024"
 rust-version = "1.85"
