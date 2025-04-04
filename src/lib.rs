@@ -212,7 +212,7 @@ impl Deref for Conjunction<'_> {
 impl core::fmt::Display for Conjunction<'_> {
 	#[inline]
 	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-		f.write_str(self.as_str())
+		<str as core::fmt::Display>::fmt(self.as_str(), f)
 	}
 }
 
