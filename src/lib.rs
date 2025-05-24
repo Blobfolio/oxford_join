@@ -455,22 +455,7 @@ impl<T> OxfordJoin for [T] where T: AsRef<str> {
 			let last = last.as_ref();
 
 			// 2 elements.
-			if mid.is_empty() {
-				let len = first.len() + last.len() + 2 + glue.len();
-				let mut out = String::with_capacity(len);
-				out.push_str(first);
-				match glue.as_str_2() {
-					Ok(s) => { out.push_str(s); }
-					Err(s) => {
-						out.push(' ');
-						out.push_str(s);
-						out.push(' ');
-					}
-				}
-				out.push_str(last);
-
-				Cow::Owned(out)
-			}
+			if mid.is_empty() { Cow::Owned(two_and_glue(first, last, glue)) }
 			// 3+ elements.
 			else {
 				let len =
@@ -536,23 +521,7 @@ impl<T> OxfordJoin for [T; 2] where T: AsRef<str> {
 	///
 	/// This is a special case; it will always read "first CONJUNCTION last".
 	fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
-		let a = self[0].as_ref();
-		let b = self[1].as_ref();
-
-		let len = a.len() + b.len() + 2 + glue.len();
-		let mut out = String::with_capacity(len);
-		out.push_str(a);
-		match glue.as_str_2() {
-			Ok(s) => { out.push_str(s); }
-			Err(s) => {
-				out.push(' ');
-				out.push_str(s);
-				out.push(' ');
-			}
-		}
-		out.push_str(b);
-
-		Cow::Owned(out)
+		Cow::Owned(two_and_glue(self[0].as_ref(), self[1].as_ref(), glue))
 	}
 }
 
@@ -632,60 +601,53 @@ macro_rules! join_btrees {
 	($iter:ident) => (
 		/// # Oxford Join.
 		fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
-			match self.len() {
-				0 => Cow::Borrowed(""),
-				1 => Cow::Borrowed(self.$iter().next().unwrap().as_ref()),
-				2 => {
-					let mut iter = self.$iter();
-					let a = iter.next().unwrap().as_ref();
-					let b = iter.next().unwrap().as_ref();
+			let mut iter = self.$iter();
 
-					let len = a.len() + b.len() + 2 + glue.len();
-					let mut out = String::with_capacity(len);
-					out.push_str(a);
-					match glue.as_str_2() {
-						Ok(s) => { out.push_str(s); }
-						Err(s) => {
-							out.push(' ');
-							out.push_str(s);
-							out.push(' ');
-						}
-					}
-					out.push_str(b);
+			// Do we have a first?
+			let Some(a) = iter.next() else { return Cow::Borrowed(""); };
+			let a: &str = a.as_ref();
 
-					Cow::Owned(out)
-				},
-				n => {
-					let last = n - 1;
-					let len = glue.len() + 1 + last * 2 + self.$iter().map(|x| x.as_ref().len()).sum::<usize>();
-					let mut out = String::with_capacity(len);
-					let mut iter = self.$iter();
+			// Can we get a second?
+			let Some(b) = iter.next() else { return Cow::Borrowed(a); };
+			let b: &str = b.as_ref();
 
-					// Write the first.
-					out.push_str(iter.next().unwrap().as_ref());
+			// How about a third?
+			let Some(c) = iter.next() else {
+				return Cow::Owned(two_and_glue(a, b, glue));
+			};
 
-					// Write the middles.
-					for s in iter.by_ref().take(last - 1) {
-						out.push_str(", ");
-						out.push_str(s.as_ref());
-					}
+			// We'll have N to deal with.
+			let len = glue.len() + 1 + (self.len() - 1) * 2 + self.$iter().map(|x| x.as_ref().len()).sum::<usize>();
+			let mut out = String::with_capacity(len);
 
-					// Final glue.
-					match glue.as_str_n() {
-						Ok(s) => { out.push_str(s); },
-						Err(s) => {
-							out.push_str(", ");
-							out.push_str(s);
-							out.push(' ');
-						}
-					}
+			// Start with what we already know.
+			out.push_str(a);
+			out.push_str(", ");
+			out.push_str(b);
 
-					// Write the last.
-					out.push_str(iter.next().unwrap().as_ref());
-
-					Cow::Owned(out)
-				},
+			// Loop through the remainder, saving the last for last.
+			let mut buf = c;
+			for next in iter.map(|n| core::mem::replace(&mut buf, n)) {
+				// Add the _previous_ value to the output. (The "current" value
+				// is now in the buffer.)
+				out.push_str(", ");
+				out.push_str(next.as_ref());
 			}
+
+			// Final glue.
+			match glue.as_str_n() {
+				Ok(s) => { out.push_str(s); },
+				Err(s) => {
+					out.push_str(", ");
+					out.push_str(s);
+					out.push(' ');
+				}
+			}
+
+			// Write the last.
+			out.push_str(buf.as_ref());
+
+			Cow::Owned(out)
 		}
 	);
 }
@@ -693,6 +655,27 @@ macro_rules! join_btrees {
 impl<K, T> OxfordJoin for BTreeMap<K, T> where T: AsRef<str> { join_btrees!(values); }
 
 impl<T> OxfordJoin for BTreeSet<T> where T: AsRef<str> { join_btrees!(iter); }
+
+
+
+/// # Two and Glue!
+///
+/// Join two elements and some glue into a new string.
+fn two_and_glue(a: &str, b: &str, glue: Conjunction<'_>) -> String {
+	let len = a.len() + b.len() + 2 + glue.len();
+	let mut out = String::with_capacity(len);
+	out.push_str(a);
+	match glue.as_str_2() {
+		Ok(s) => { out.push_str(s); }
+		Err(s) => {
+			out.push(' ');
+			out.push_str(s);
+			out.push(' ');
+		}
+	}
+	out.push_str(b);
+	out
+}
 
 
 
