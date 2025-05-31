@@ -4,6 +4,10 @@
 
 ## [0.6.0](https://github.com/Blobfolio/oxford_join/releases/tag/v0.6.0) - TBD
 
+### Changed
+
+* Bump MSRV to `1.87`
+
 ### Breaking
 
 * Remove `Deref` for `Conjunction`
