@@ -134,10 +134,7 @@ use alloc::{
 	},
 	string::String,
 };
-use core::{
-	borrow::Borrow,
-	ops::Deref,
-};
+use core::borrow::Borrow;
 
 
 
@@ -196,12 +193,6 @@ impl AsRef<str> for Conjunction<'_> {
 impl Borrow<str> for Conjunction<'_> {
 	#[inline]
 	fn borrow(&self) -> &str { self.as_str() }
-}
-
-impl Deref for Conjunction<'_> {
-	type Target = str;
-	#[inline]
-	fn deref(&self) -> &Self::Target { self.as_str() }
 }
 
 impl core::fmt::Display for Conjunction<'_> {
