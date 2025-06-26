@@ -439,7 +439,7 @@ pub trait OxfordJoin {
 
 impl<T> OxfordJoin for [T] where T: AsRef<str> {
 	/// # Oxford Join.
-	fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
+	fn oxford_join(&self, glue: Conjunction) -> Cow<'_, str> {
 		// 2+ elements.
 		if let [first, mid @ .., last] = self {
 			let first = first.as_ref();
@@ -493,7 +493,7 @@ impl<T> OxfordJoin for [T; 0] where T: AsRef<str> {
 	/// # Oxford Join.
 	///
 	/// This is a special case; the result is always empty.
-	fn oxford_join(&self, _glue: Conjunction) -> Cow<str> { Cow::Borrowed("") }
+	fn oxford_join(&self, _glue: Conjunction) -> Cow<'_, str> { Cow::Borrowed("") }
 }
 
 impl<T> OxfordJoin for [T; 1] where T: AsRef<str> {
@@ -501,7 +501,7 @@ impl<T> OxfordJoin for [T; 1] where T: AsRef<str> {
 	/// # Oxford Join.
 	///
 	/// This is a special case; the sole entry will be returned as-is.
-	fn oxford_join(&self, _glue: Conjunction) -> Cow<str> {
+	fn oxford_join(&self, _glue: Conjunction) -> Cow<'_, str> {
 		Cow::Borrowed(self[0].as_ref())
 	}
 }
@@ -511,7 +511,7 @@ impl<T> OxfordJoin for [T; 2] where T: AsRef<str> {
 	/// # Oxford Join.
 	///
 	/// This is a special case; it will always read "first CONJUNCTION last".
-	fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
+	fn oxford_join(&self, glue: Conjunction) -> Cow<'_, str> {
 		Cow::Owned(two_and_glue(self[0].as_ref(), self[1].as_ref(), glue))
 	}
 }
@@ -521,7 +521,7 @@ macro_rules! join_arrays {
 	($($num:literal $pad:literal $last:literal),+ $(,)?) => ($(
 		impl<T> OxfordJoin for [T; $num] where T: AsRef<str> {
 			/// # Oxford Join.
-			fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
+			fn oxford_join(&self, glue: Conjunction) -> Cow<'_, str> {
 				let len = glue.len() + $pad + self.iter().map(|x| x.as_ref().len()).sum::<usize>();
 				let [first, mid @ .., last] = self;
 				let mut out = String::with_capacity(len);
@@ -591,7 +591,7 @@ join_arrays!(
 macro_rules! join_btrees {
 	($iter:ident) => (
 		/// # Oxford Join.
-		fn oxford_join(&self, glue: Conjunction) -> Cow<str> {
+		fn oxford_join(&self, glue: Conjunction) -> Cow<'_, str> {
 			let mut iter = self.$iter();
 
 			// Do we have a first?
