@@ -56,5 +56,5 @@ Add `oxford_join` to your `dependencies` in `Cargo.toml`, like:
 
 ```toml
 [dependencies]
-oxford_join = "0.6.*"
+oxford_join = "0.7.*"
 ```
