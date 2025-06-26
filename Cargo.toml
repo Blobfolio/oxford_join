@@ -1,9 +1,9 @@
 [package]
 name = "oxford_join"
-version = "0.6.0"
+version = "0.7.0"
 authors = ["Josh Stoik <josh@blobfolio.com>"]
 edition = "2024"
-rust-version = "1.87"
+rust-version = "1.88"
 description = "Join string slices with Oxford Commas!"
 license = "WTFPL"
 repository = "https://github.com/Blobfolio/oxford_join"
@@ -22,7 +22,7 @@ exclude = [
 name = "Oxford Join"
 
 [dev-dependencies]
-brunch = "0.10.*"
+brunch = "0.11.*"
 
 [[bench]]
 name = "oj_join"
