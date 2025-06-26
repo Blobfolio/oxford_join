@@ -374,7 +374,7 @@ pub trait OxfordJoin {
 	/// # Oxford Join.
 	///
 	/// Join a slice of strings with Oxford Commas inserted as necessary.
-	fn oxford_join(&self, glue: Conjunction) -> Cow<str>;
+	fn oxford_join(&self, glue: Conjunction) -> Cow<'_, str>;
 
 	#[inline]
 	/// # Oxford Join (and).
@@ -389,7 +389,7 @@ pub trait OxfordJoin {
 	/// let set = ["Apples", "Oranges"];
 	/// assert_eq!(set.oxford_join(Conjunction::And), set.oxford_and());
 	/// ```
-	fn oxford_and(&self) -> Cow<str> { self.oxford_join(Conjunction::And) }
+	fn oxford_and(&self) -> Cow<'_, str> { self.oxford_join(Conjunction::And) }
 
 	#[inline]
 	/// # Oxford Join (and/or).
@@ -404,7 +404,7 @@ pub trait OxfordJoin {
 	/// let set = ["Apples", "Oranges"];
 	/// assert_eq!(set.oxford_join(Conjunction::AndOr), set.oxford_and_or());
 	/// ```
-	fn oxford_and_or(&self) -> Cow<str> { self.oxford_join(Conjunction::AndOr) }
+	fn oxford_and_or(&self) -> Cow<'_, str> { self.oxford_join(Conjunction::AndOr) }
 
 	#[inline]
 	/// # Oxford Join (nor).
@@ -419,7 +419,7 @@ pub trait OxfordJoin {
 	/// let set = ["Apples", "Oranges"];
 	/// assert_eq!(set.oxford_join(Conjunction::Nor), set.oxford_nor());
 	/// ```
-	fn oxford_nor(&self) -> Cow<str> { self.oxford_join(Conjunction::Nor) }
+	fn oxford_nor(&self) -> Cow<'_, str> { self.oxford_join(Conjunction::Nor) }
 
 	#[inline]
 	/// # Oxford Join (or).
@@ -434,7 +434,7 @@ pub trait OxfordJoin {
 	/// let set = ["Apples", "Oranges"];
 	/// assert_eq!(set.oxford_join(Conjunction::Or), set.oxford_or());
 	/// ```
-	fn oxford_or(&self) -> Cow<str> { self.oxford_join(Conjunction::Or) }
+	fn oxford_or(&self) -> Cow<'_, str> { self.oxford_join(Conjunction::Or) }
 }
 
 impl<T> OxfordJoin for [T] where T: AsRef<str> {
