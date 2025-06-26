@@ -22,7 +22,7 @@ exclude = [
 name = "Oxford Join"
 
 [dev-dependencies]
-brunch = "0.10.*"
+brunch = "0.11.*"
 
 [[bench]]
 name = "oj_join"
