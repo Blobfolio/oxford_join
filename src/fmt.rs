@@ -319,4 +319,27 @@ mod test {
 			"hiho",
 		);
 	}
+
+	#[test]
+	fn t_oxford_join() {
+		use crate::OxfordJoin;
+
+		let slice: &[&str] = &["hi"];
+		assert_eq!(
+			format!("{}", OxfordJoinFmt::and(slice)),
+			slice.oxford_and(),
+		);
+
+		let slice: &[&str] = &["hi", "ho"];
+		assert_eq!(
+			format!("{}", OxfordJoinFmt::and(slice)),
+			slice.oxford_and(),
+		);
+
+		let slice: &[&str] = &["hi", "ho", "hi", "ho"];
+		assert_eq!(
+			format!("{}", OxfordJoinFmt::and(slice)),
+			slice.oxford_and(),
+		);
+	}
 }
