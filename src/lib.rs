@@ -134,7 +134,15 @@ use alloc::{
 	},
 	string::String,
 };
-use core::borrow::Borrow;
+use core::{
+	borrow::Borrow,
+	cmp::Ordering,
+};
+
+
+
+/// # Comma Space Separator.
+const COMMA_SPACE: &str = ", ";
 
 
 
@@ -209,14 +217,17 @@ macro_rules! conjunctions {
 				}
 			}
 
-			/// # As Str w/ Comma and Padding.
+			/// # As Str w/ Trailing Space.
 			///
-			/// Return the conjunction as a string slice starting with a ", " and
-			/// ending with a space, unless custom.
-			const fn as_str_n(&self) -> Result<&'static str, &str> {
+			/// Return the conjunction as a string slice with a trailing space,
+			/// unless custom, which is passed through as is.
+			///
+			/// The boolean indicates whether or not an extra space has to be
+			/// added manually. (Only applies to custom.)
+			const fn as_str_n(&self) -> (&str, bool) {
 				match self {
-					$( Self::$k => Ok(concat!(", ", $v, " ")), )+
-					Self::Other(s) => Err(s),
+					$( Self::$k => (concat!($v, " "), false), )+
+					Self::Other(s) => (s, true),
 				}
 			}
 
@@ -336,13 +347,13 @@ impl Conjunction<'_> {
 			for next in iter.map(|n| core::mem::replace(&mut buf, n)) {
 				// Add the _previous_ value to the output. (The "current" value
 				// is now in the buffer.)
-				out.push_str(", ");
+				out.push_str(COMMA_SPACE);
 				out.push_str(next.as_ref());
 				many = true;
 			}
 
 			// Add the final punctuation and conjunction.
-			if many { out.push_str(", "); } else { out.push(' '); }
+			if many { out.push_str(COMMA_SPACE); } else { out.push(' '); }
 			out.push_str(self.as_str());
 			out.push(' ');
 
@@ -453,51 +464,44 @@ pub trait OxfordJoin {
 impl<T> OxfordJoin for [T] where T: AsRef<str> {
 	/// # Oxford Join.
 	fn oxford_join(&self, glue: Conjunction) -> Cow<'_, str> {
-		// 2+ elements.
-		if let [first, mid @ .., last] = self {
-			let first = first.as_ref();
-			let last = last.as_ref();
+		// Split off the last element.
+		let Some((last, rest)) = self.split_last() else { return Cow::Borrowed(""); };
+		let last: &str = last.as_ref();
 
-			// 2 elements.
-			if mid.is_empty() { Cow::Owned(two_and_glue(first, last, glue)) }
-			// 3+ elements.
-			else {
+		// What we do now comes down to how big rest is.
+		match rest.len().cmp(&1) {
+			// One element.
+			Ordering::Less => Cow::Borrowed(last),
+			// Two elements.
+			Ordering::Equal => Cow::Owned(two_and_glue(rest[0].as_ref(), last, glue)),
+			// Three or more elements.
+			Ordering::Greater => {
+				// Three or more.
+				let (glue, glue_more) = glue.as_str_n();
 				let len =
-					glue.len() + 1 +                                     // Glue length plus one trailing space.
-					((mid.len() + 1) * 2) +                              // Commaspace (2) for all but last entry.
-					first.len() + last.len() +                           // First and last item length.
-					mid.iter().map(|x| x.as_ref().len()).sum::<usize>(); // All other item lengths.
+					glue.len() + usize::from(glue_more) + // Glue.
+					last.len() + // Last element.
+					rest.iter().map(|x| x.as_ref().len() + 2).sum::<usize>();
+
 				let mut out = String::with_capacity(len);
 
-				// Write the first.
-				out.push_str(first);
-
-				// Write the middles.
-				for s in mid {
-					out.push_str(", ");
-					out.push_str(s.as_ref());
+				// Push all but the last element with trailing ", ".
+				for v in rest {
+					out.push_str(v.as_ref());
+					out.push_str(COMMA_SPACE);
 				}
 
-				// Final glue.
-				match glue.as_str_n() {
-					Ok(s) => { out.push_str(s); },
-					Err(s) => {
-						out.push_str(", ");
-						out.push_str(s);
-						out.push(' ');
-					}
-				}
+				// Push the conjunction.
+				out.push_str(glue);
+				if glue_more { out.push(' '); }
 
-				// Write the last.
-				out.push_str(last.as_ref());
+				// Push the last element.
+				out.push_str(last);
 
+				// Done!
 				Cow::Owned(out)
-			}
+			},
 		}
-		// One element.
-		else if self.len() == 1 { Cow::Borrowed(self[0].as_ref()) }
-		// No elements.
-		else { Cow::Borrowed("") }
 	}
 }
 
@@ -531,74 +535,70 @@ impl<T> OxfordJoin for [T; 2] where T: AsRef<str> {
 
 /// # Join Arrays (3+).
 macro_rules! join_arrays {
-	($($num:literal $pad:literal $last:literal),+ $(,)?) => ($(
+	($($num:literal $last:literal),+ $(,)?) => ($(
 		impl<T> OxfordJoin for [T; $num] where T: AsRef<str> {
 			/// # Oxford Join.
 			fn oxford_join(&self, glue: Conjunction) -> Cow<'_, str> {
-				let len = glue.len() + $pad + self.iter().map(|x| x.as_ref().len()).sum::<usize>();
-				let [first, mid @ .., last] = self;
+				let (glue, glue_more) = glue.as_str_n();
+				let len =
+					glue.len() + usize::from(glue_more) + // Glue.
+					$last * 2 +  // ", " for each leading element.
+					self.iter().map(|x| x.as_ref().len()).sum::<usize>();
+
 				let mut out = String::with_capacity(len);
 
-				// Write the first.
-				out.push_str(first.as_ref());
-
-				// Write the middles.
-				for s in mid {
-					out.push_str(", ");
-					out.push_str(s.as_ref());
+				// Push all but the last element with trailing ", ".
+				for v in &self[..$last] {
+					out.push_str(v.as_ref());
+					out.push_str(COMMA_SPACE);
 				}
 
-				// Final glue.
-				match glue.as_str_n() {
-					Ok(s) => { out.push_str(s); },
-					Err(s) => {
-						out.push_str(", ");
-						out.push_str(s);
-						out.push(' ');
-					}
-				}
+				// Push the conjunction.
+				out.push_str(glue);
+				if glue_more { out.push(' '); }
 
-				// Write the last.
-				out.push_str(last.as_ref());
+				// Push the last element.
+				out.push_str(self[$last].as_ref());
 
+				// Done!
 				Cow::Owned(out)
 			}
 		}
 	)+);
 }
 
-join_arrays!(
-	 3  5  2,
-	 4  7  3,
-	 5  9  4,
-	 6 11  5,
-	 7 13  6,
-	 8 15  7,
-	 9 17  8,
-	10 19  9,
-	11 21 10,
-	12 23 11,
-	13 25 12,
-	14 27 13,
-	15 29 14,
-	16 31 15,
-	17 33 16,
-	18 35 17,
-	19 37 18,
-	20 39 19,
-	21 41 20,
-	22 43 21,
-	23 45 22,
-	24 47 23,
-	25 49 24,
-	26 51 25,
-	27 53 26,
-	28 55 27,
-	29 57 28,
-	30 59 29,
-	31 61 30,
-	32 63 31,
-);
+join_arrays! {
+	 3  2,
+	 4  3,
+	 5  4,
+	 6  5,
+	 7  6,
+	 8  7,
+	 9  8,
+	10  9,
+	11 10,
+	12 11,
+	13 12,
+	14 13,
+	15 14,
+	16 15,
+	17 16,
+	18 17,
+	19 18,
+	20 19,
+	21 20,
+	22 21,
+	23 22,
+	24 23,
+	25 24,
+	26 25,
+	27 26,
+	28 27,
+	29 28,
+	30 29,
+	31 30,
+	32 31,
+}
 
 /// # Helper: Binary Tree Joins.
 macro_rules! join_btrees {
@@ -620,37 +620,37 @@ macro_rules! join_btrees {
 				return Cow::Owned(two_and_glue(a, b, glue));
 			};
 
-			// We'll have N to deal with.
-			let len = glue.len() + 1 + (self.len() - 1) * 2 + self.$iter().map(|x| x.as_ref().len()).sum::<usize>();
+			let (glue, glue_more) = glue.as_str_n();
+			let len =
+				glue.len() + usize::from(glue_more) + // Glue.
+				(self.len() - 1) * 2 + // ", " for all but last.
+				self.$iter().map(|x| x.as_ref().len()).sum::<usize>();
+
 			let mut out = String::with_capacity(len);
 
 			// Start with what we already know.
 			out.push_str(a);
-			out.push_str(", ");
+			out.push_str(COMMA_SPACE);
 			out.push_str(b);
+			out.push_str(COMMA_SPACE);
 
 			// Loop through the remainder, saving the last for last.
 			let mut buf = c;
 			for next in iter.map(|n| core::mem::replace(&mut buf, n)) {
 				// Add the _previous_ value to the output. (The "current" value
 				// is now in the buffer.)
-				out.push_str(", ");
 				out.push_str(next.as_ref());
+				out.push_str(COMMA_SPACE);
 			}
 
-			// Final glue.
-			match glue.as_str_n() {
-				Ok(s) => { out.push_str(s); },
-				Err(s) => {
-					out.push_str(", ");
-					out.push_str(s);
-					out.push(' ');
-				}
-			}
+			// Push the conjunction.
+			out.push_str(glue);
+			if glue_more { out.push(' '); }
 
-			// Write the last.
+			// Push the last element.
 			out.push_str(buf.as_ref());
 
+			// Done!
 			Cow::Owned(out)
 		}
 	);
@@ -662,6 +662,7 @@ impl<T> OxfordJoin for BTreeSet<T> where T: AsRef<str> { join_btrees!(iter); }
 
 
 
+#[inline]
 /// # Two and Glue!
 ///
 /// Join two elements and some glue into a new string.
@@ -773,14 +774,14 @@ mod tests {
 			// Version N.
 			match c.as_str_n() {
 				// Should match with stuff on the ends.
-				Ok(s) => {
+				(s, false) => {
 					assert_eq!(
-						format!(", {} ", c.as_str()),
+						format!("{} ", c.as_str()),
 						s,
 					);
 				},
 				// Should match exactly because custom.
-				Err(s) => { assert_eq!(c.as_str(), s); },
+				(s, true) => { assert_eq!(c.as_str(), s); },
 			}
 		}
 
