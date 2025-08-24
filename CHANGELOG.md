@@ -2,6 +2,14 @@
 
 
 
+## [0.7.1](https://github.com/Blobfolio/oxford_join/releases/tag/v0.7.1) - 2025-08-24
+
+### Changed
+
+* Miscellaneous code cleanup and lints
+
+
+
 ## [0.7.0](https://github.com/Blobfolio/oxford_join/releases/tag/v0.7.0) - 2025-06-26
 
 ### Changed
