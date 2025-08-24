@@ -138,51 +138,121 @@ use core::borrow::Borrow;
 
 
 
-#[derive(Debug, Copy, Clone, Default, Eq, Hash, PartialEq)]
-/// # Conjunction.
-///
-/// This is the glue used to bind the last entry in an [`oxford_join`](OxfordJoin::oxford_join)ed set.
-///
-/// If you're doing something weird and the preset entries aren't currint it
-/// for you, you can use [`Conjunction::Other`], which wraps an `&str`. This
-/// value should just be the word/symbol; surrounding whitespace and
-/// punctuation are added during the join as needed.
-///
-/// ## Examples.
-///
-/// If a set has exactly two items:
-/// ```text
-/// first <CONJUNCTION> last
-/// ```
-///
-/// If a set has three or more items:
-/// ```text
-/// first, second, …, <CONJUNCTION> last
-/// ```
-///
-/// If the set is empty or singular, there's nothing to conjunct.
-pub enum Conjunction<'a> {
-	/// # Ampersand (&).
-	Ampersand,
+/// # Helper: Conjunctions.
+macro_rules! conjunctions {
+	( $($k:ident $v:literal),+ $(,)? ) => (
+		#[derive(Debug, Copy, Clone, Eq, Hash, PartialEq)]
+		/// # Conjunction.
+		///
+		/// This is the glue used to bind the last entry in an [`oxford_join`](OxfordJoin::oxford_join)ed set.
+		///
+		/// If you're doing something weird and the preset entries aren't currint it
+		/// for you, you can use [`Conjunction::Other`], which wraps an `&str`. This
+		/// value should just be the word/symbol; surrounding whitespace and
+		/// punctuation are added during the join as needed.
+		///
+		/// ## Examples.
+		///
+		/// If a set has exactly two items:
+		/// ```text
+		/// first <CONJUNCTION> last
+		/// ```
+		///
+		/// If a set has three or more items:
+		/// ```text
+		/// first, second, …, <CONJUNCTION> last
+		/// ```
+		///
+		/// If the set is empty or singular, there's nothing to conjunct.
+		pub enum Conjunction<'a> {
+			$(
+				#[doc = concat!("# \"", $v, "\"")]
+				$k,
+			)+
 
-	#[default]
-	/// # And.
-	And,
+			/// # Custom Entry (Trimmed).
+			Other(&'a str),
+		}
 
-	/// # And/Or.
-	AndOr,
+		impl Conjunction<'_> {
+			#[must_use]
+			/// # As Str.
+			///
+			/// Return the conjunction as a string slice.
+			///
+			/// ## Examples
+			///
+			/// ```
+			/// use oxford_join::Conjunction;
+			///
+			#[doc = concat!(
+				$(
+					concat!("assert_eq!(Conjunction::", stringify!($k), ".as_str(), \"", $v, "\");\n"),
+				)+
+			)]
+			/// ```
+			pub const fn as_str(&self) -> &str {
+				match self {
+					$( Self::$k => $v, )+
+					Self::Other(s) => s,
+				}
+			}
 
-	/// # Nor.
-	Nor,
+			/// # As Str w/ Padding.
+			///
+			/// Return the conjunction as a string slice with spaces on either end,
+			/// unless custom, which passes through as an error.
+			const fn as_str_2(&self) -> Result<&'static str, &str> {
+				match self {
+					$( Self::$k => Ok(concat!(" ", $v, " ")), )+
+					Self::Other(s) => Err(s),
+				}
+			}
 
-	/// # Or.
-	Or,
+			/// # As Str w/ Comma and Padding.
+			///
+			/// Return the conjunction as a string slice starting with a ", " and
+			/// ending with a space, unless custom.
+			const fn as_str_n(&self) -> Result<&'static str, &str> {
+				match self {
+					$( Self::$k => Ok(concat!(", ", $v, " ")), )+
+					Self::Other(s) => Err(s),
+				}
+			}
 
-	/// # Custom Entry (Trimmed).
-	Other(&'a str),
+			#[must_use]
+			/// # Length.
+			///
+			/// Return the string length of the conjunction.
+			///
+			/// ## Examples
+			///
+			/// ```
+			/// use oxford_join::Conjunction;
+			///
+			#[doc = concat!(
+				$(
+					concat!("assert_eq!(\n\tConjunction::", stringify!($k), ".as_str().len(),\n\tConjunction::", stringify!($k), ".len(),\n);\n"),
+				)+
+			)]
+			/// ```
+			pub const fn len(&self) -> usize {
+				match self {
+					$( Self::$k => const { $v.len() }, )+
+					Self::Other(s) => s.len(),
+				}
+			}
+		}
+	);
+}
 
-	/// # Plus (+).
-	Plus,
+conjunctions! {
+	Ampersand "&",
+	And       "and",
+	AndOr     "and/or",
+	Nor       "nor",
+	Or        "or",
+	Plus      "+",
 }
 
 impl AsRef<str> for Conjunction<'_> {
@@ -193,6 +263,11 @@ impl AsRef<str> for Conjunction<'_> {
 impl Borrow<str> for Conjunction<'_> {
 	#[inline]
 	fn borrow(&self) -> &str { self.as_str() }
+}
+
+impl Default for Conjunction<'_> {
+	#[inline]
+	fn default() -> Self { Self::And }
 }
 
 impl core::fmt::Display for Conjunction<'_> {
@@ -208,68 +283,6 @@ impl<'a> From<&'a str> for Conjunction<'a> {
 }
 
 impl Conjunction<'_> {
-	#[must_use]
-	/// # As Str.
-	///
-	/// Return the conjunction as a string slice.
-	pub const fn as_str(&self) -> &str {
-		match self {
-			Self::Ampersand => "&",
-			Self::And => "and",
-			Self::AndOr => "and/or",
-			Self::Nor => "nor",
-			Self::Or => "or",
-			Self::Other(s) => s,
-			Self::Plus => "+",
-		}
-	}
-
-	/// # As Str w/ Padding.
-	///
-	/// Return the conjunction as a string slice with spaces on either end,
-	/// unless custom, which passes through as an error.
-	const fn as_str_2(&self) -> Result<&'static str, &str> {
-		match self {
-			Self::Ampersand => Ok(" & "),
-			Self::And => Ok(" and "),
-			Self::AndOr => Ok(" and/or "),
-			Self::Nor => Ok(" nor "),
-			Self::Or => Ok(" or "),
-			Self::Other(s) => Err(s),
-			Self::Plus => Ok(" + "),
-		}
-	}
-
-	/// # As Str w/ Comma and Padding.
-	///
-	/// Return the conjunction as a string slice starting with a ", " and
-	/// ending with a space, unless custom.
-	const fn as_str_n(&self) -> Result<&'static str, &str> {
-		match self {
-			Self::Ampersand => Ok(", & "),
-			Self::And => Ok(", and "),
-			Self::AndOr => Ok(", and/or "),
-			Self::Nor => Ok(", nor "),
-			Self::Or => Ok(", or "),
-			Self::Other(s) => Err(s),
-			Self::Plus => Ok(", + "),
-		}
-	}
-
-	#[must_use]
-	/// # Length.
-	///
-	/// Return the string length of the conjunction.
-	pub const fn len(&self) -> usize {
-		match self {
-			Self::And | Self::Nor => 3,
-			Self::Or => 2,
-			Self::Ampersand | Self::Plus => 1,
-			Self::AndOr => 6,
-			Self::Other(s) => s.len(),
-		}
-	}
-
 	#[must_use]
 	/// # Is Empty.
 	///
