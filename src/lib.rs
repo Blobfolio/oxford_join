@@ -9,58 +9,49 @@
 [![license](https://img.shields.io/badge/license-wtfpl-ff1493?style=flat-square)](https://en.wikipedia.org/wiki/WTFPL)
 [![contributions welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square&label=contributions)](https://github.com/Blobfolio/oxford_join/issues)
 
-Join a slice of strings with [Oxford Commas](https://en.wikipedia.org/wiki/Serial_comma) inserted as necessary, using the [`Conjunction`] of your choice.
-
-(You know, as it should be. Haha.)
-
-The return formatting depends on the size of the set:
-
-```text
-0: ""
-1: "first"
-2: "first <CONJUNCTION> last"
-n: "first, second, …, <CONJUNCTION> last"
-```
-
-This crate is `#![no_std]`-compatible.
-
-## Examples
-
-The magic is accomplished with the [`OxfordJoin`] trait. Import that, and most
-slice-y things holding `AsRef<str>` will inherit the [`OxfordJoin::oxford_join`]
-method for joining.
+This crate provides two joining macros for `format!`, `println!`, etc.,
+formatting contexts:
+* [`join`] combines the values of an iterator with the specified glue;
+* [`oxford_join`] combines the values of an iterator with [Oxford commas](https://en.wikipedia.org/wiki/Serial_comma) and a conjunction;
 
 ```
-use oxford_join::{Conjunction, OxfordJoin};
+# extern crate alloc;
+use oxford_join::{join, oxford_join};
 
-let set = ["Apples", "Oranges"];
-assert_eq!(set.oxford_join(Conjunction::And), "Apples and Oranges");
-
-let set = ["Apples", "Oranges", "Bananas"];
-assert_eq!(set.oxford_join(Conjunction::And), "Apples, Oranges, and Bananas");
-
-// There are also shorthand methods for and, or, and_or, and nor, allowing you
-// to skip the Conjunction enum entirely.
-assert_eq!(set.oxford_and(), "Apples, Oranges, and Bananas");
-assert_eq!(set.oxford_and_or(), "Apples, Oranges, and/or Bananas");
-assert_eq!(set.oxford_nor(), "Apples, Oranges, nor Bananas");
-assert_eq!(set.oxford_or(), "Apples, Oranges, or Bananas");
-```
-
-There is also a [`Display`](core::fmt::Display)-based [`OxfordJoinFmt`] wrapper
-that can be more efficient for `format!`-type use cases, or types which
-implement `Display` but not `AsRef<str>`.
-
-```
-use oxford_join::OxfordJoinFmt;
-let set = ["Apples", "Oranges", "Bananas"];
+// Straight joins.
 assert_eq!(
-    format!("I eat {}.", OxfordJoinFmt::and(&set)),
-    "I eat Apples, Oranges, and Bananas.",
+    format!("{} = 6", join!(" + ", 1_u8..=3_u8)),
+    "1 + 2 + 3 = 6",
+);
+
+// The good stuff!
+assert_eq!(
+    oxford_join!("or", ["apples", "bananas"].iter()).to_string(),
+    "apples or bananas",
+);
+assert_eq!(
+    oxford_join!("or", ["apples", "bananas", "carrots"].iter()).to_string(),
+    "apples, bananas, or carrots",
 );
 ```
 
-That's all, folks!
+Formatting [parameters](https://doc.rust-lang.org/std/fmt/index.html#formatting-parameters) and [traits](https://doc.rust-lang.org/std/fmt/index.html#formatting-traits)
+are supported by both macros and passed through to each individual value.
+
+```
+# extern crate alloc;
+# use oxford_join::oxford_join;
+// Alternate, padding, HEX, oh my!
+assert_eq!(
+    format!(
+        "Checksums: {:#010X}",
+        oxford_join!(@UpperHex [30_000, 166, u32::MAX].iter()),
+    ),
+    "Checksums: 0x00007530, 0x000000A6, and 0xFFFFFFFF",
+);
+```
+
+See the documentation for [`join`] and [`oxford_join`] for complete usage details.
 */
 
 #![forbid(unsafe_code)]
@@ -116,675 +107,541 @@ That's all, folks!
 
 #![no_std]
 
-extern crate alloc;
+use core::fmt;
 
-mod fmt;
-
-// Re-export.
-pub use fmt::{
-	JoinFmt,
-	OxfordJoinFmt,
-};
-
-use alloc::{
-	borrow::Cow,
-	collections::{
-		BTreeSet,
-		BTreeMap,
-	},
-	string::String,
-};
-use core::{
-	borrow::Borrow,
-	cmp::Ordering,
-};
+#[cfg(test)]
+use brunch as _;
 
 
 
-/// # Comma Space Separator.
-const COMMA_SPACE: &str = ", ";
+/// # Helper: Wrapper Structs.
+///
+/// These work just like [`FromFn`](fmt::FromFn), but map to individual
+/// formatting traits.
+macro_rules! wrappers {
+	( $d:tt $( $struct:ident $trait:ident, )+ ) => (
+		$(
+			#[doc(hidden)]
+			#[doc = concat!("# Format Type (", stringify!($trait), ")")]
+			pub struct $struct<F>(F);
 
+			#[doc(hidden)]
+			impl<F> $struct<F>
+			where F: Fn(&mut fmt::Formatter<'_>) -> fmt::Result {
+				#[inline]
+				/// # New.
+				pub const fn new(f: F) -> Self { Self(f) }
+			}
 
+			#[doc(hidden)]
+			impl<F> fmt::$trait for $struct<F>
+			where F: Fn(&mut fmt::Formatter<'_>) -> fmt::Result {
+				#[inline]
+				fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+					(self.0)(f)
+				}
+			}
+		)+
 
-/// # Helper: Conjunctions.
-macro_rules! conjunctions {
-	( $($k:ident $v:literal),+ $(,)? ) => (
-		#[derive(Debug, Copy, Clone, Eq, Hash, PartialEq)]
-		/// # Conjunction.
+		#[macro_export]
+		#[doc(hidden)]
+		/// # Helper: Wrap Wrapper.
 		///
-		/// This is the glue used to bind the last entry in an [`oxford_join`](OxfordJoin::oxford_join)ed set.
-		///
-		/// If you're doing something weird and the preset entries aren't currint it
-		/// for you, you can use [`Conjunction::Other`], which wraps an `&str`. This
-		/// value should just be the word/symbol; surrounding whitespace and
-		/// punctuation are added during the join as needed.
-		///
-		/// ## Examples.
-		///
-		/// If a set has exactly two items:
-		/// ```text
-		/// first <CONJUNCTION> last
-		/// ```
-		///
-		/// If a set has three or more items:
-		/// ```text
-		/// first, second, …, <CONJUNCTION> last
-		/// ```
-		///
-		/// If the set is empty or singular, there's nothing to conjunct.
-		pub enum Conjunction<'a> {
+		/// This macro is used to map a trait to its corresponding struct
+		/// instantiation method.
+		macro_rules! wrap {
 			$(
-				#[doc = concat!("# \"", $v, "\"")]
-				$k,
+				(@$trait $cb:expr) => ( $crate::$struct::new($cb) );
 			)+
 
-			/// # Custom Entry (Trimmed).
-			Other(&'a str),
-		}
-
-		impl Conjunction<'_> {
-			#[must_use]
-			/// # As Str.
-			///
-			/// Return the conjunction as a string slice.
-			///
-			/// ## Examples
-			///
-			/// ```
-			/// use oxford_join::Conjunction;
-			///
-			#[doc = concat!(
-				$(
-					concat!("assert_eq!(Conjunction::", stringify!($k), ".as_str(), \"", $v, "\");\n"),
-				)+
-			)]
-			/// ```
-			pub const fn as_str(&self) -> &str {
-				match self {
-					$( Self::$k => $v, )+
-					Self::Other(s) => s,
-				}
-			}
-
-			/// # As Str w/ Padding.
-			///
-			/// Return the conjunction as a string slice with spaces on either end,
-			/// unless custom, which passes through as an error.
-			const fn as_str_2(&self) -> Result<&'static str, &str> {
-				match self {
-					$( Self::$k => Ok(concat!(" ", $v, " ")), )+
-					Self::Other(s) => Err(s),
-				}
-			}
-
-			/// # As Str w/ Trailing Space.
-			///
-			/// Return the conjunction as a string slice with a trailing space,
-			/// unless custom, which is passed through as is.
-			///
-			/// The boolean indicates whether or not an extra space has to be
-			/// added manually. (Only applies to custom.)
-			const fn as_str_n(&self) -> (&str, bool) {
-				match self {
-					$( Self::$k => (concat!($v, " "), false), )+
-					Self::Other(s) => (s, true),
-				}
-			}
-
-			#[must_use]
-			/// # Length.
-			///
-			/// Return the string length of the conjunction.
-			///
-			/// ## Examples
-			///
-			/// ```
-			/// use oxford_join::Conjunction;
-			///
-			#[doc = concat!(
-				$(
-					concat!("assert_eq!(\n\tConjunction::", stringify!($k), ".as_str().len(),\n\tConjunction::", stringify!($k), ".len(),\n);\n"),
-				)+
-			)]
-			/// ```
-			pub const fn len(&self) -> usize {
-				match self {
-					$( Self::$k => const { $v.len() }, )+
-					Self::Other(s) => s.len(),
-				}
-			}
+			// Catchall error message.
+			( $d( $tt:tt )* ) => (
+				::core::compile_error!(
+					::core::concat!(
+						"Supported traits are ",
+						$( ::core::concat!("@", ::core::stringify!($trait), " ") ),+
+					)
+				)
+			);
 		}
 	);
 }
-
-conjunctions! {
-	Ampersand "&",
-	And       "and",
-	AndOr     "and/or",
-	Nor       "nor",
-	Or        "or",
-	Plus      "+",
-}
-
-impl AsRef<str> for Conjunction<'_> {
-	#[inline]
-	fn as_ref(&self) -> &str { self.as_str() }
-}
-
-impl Borrow<str> for Conjunction<'_> {
-	#[inline]
-	fn borrow(&self) -> &str { self.as_str() }
-}
-
-impl Default for Conjunction<'_> {
-	#[inline]
-	fn default() -> Self { Self::And }
-}
-
-impl core::fmt::Display for Conjunction<'_> {
-	#[inline]
-	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-		<str as core::fmt::Display>::fmt(self.as_str(), f)
-	}
-}
-
-impl<'a> From<&'a str> for Conjunction<'a> {
-	#[inline]
-	fn from(src: &'a str) -> Self { Self::Other(src.trim()) }
-}
-
-impl Conjunction<'_> {
-	#[must_use]
-	/// # Is Empty.
-	///
-	/// An empty conjunction makes no sense, but because `Conjunction::Other`
-	/// wraps arbitrary values, it is worth checking.
-	pub const fn is_empty(&self) -> bool {
-		match self {
-			Self::Other(s) => s.is_empty(),
-			_ => false,
-		}
-	}
-}
-
-impl Conjunction<'_> {
-	/// # Oxford Join (Generic).
-	///
-	/// This convenience method allows you to Oxford-join _any_ iterable data
-	/// source that yields `AsRef<str>`.
-	///
-	/// For types that implement [`OxfordJoin`] directly, the trait methods
-	/// should be preferred as they're specialized, but you'll get the same
-	/// answer either way.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use oxford_join::{Conjunction, OxfordJoin};
-	/// const LIST: [&str; 3] = ["Apples", "Bananas", "Carrots"];
-	///
-	/// // A contrived example to spell it out…
-	/// assert_eq!(
-	///     Conjunction::And.oxford_join("hello".chars().map(String::from)),
-	///     "h, e, l, l, and o"
-	/// );
-	/// ```
-	pub fn oxford_join<I, T>(&self, iter: I) -> String
-	where T: AsRef<str>, I: IntoIterator<Item=T> {
-		// Pull the first value, ensuring there actually is one.
-		let mut iter = iter.into_iter();
-		let Some(next) = iter.next() else { return String::new(); };
-
-		// MAGIC NUMBER: one fuzzy preallocation improves collection times a
-		// lot compared to separate item-by-item reserves.
-		let mut out = String::with_capacity(64);
-		out.push_str(next.as_ref());
-
-		// We have a second item!
-		if let Some(mut buf) = iter.next() {
-			// Can we get an Nth?!
-			let mut many = false;
-			for next in iter.map(|n| core::mem::replace(&mut buf, n)) {
-				// Add the _previous_ value to the output. (The "current" value
-				// is now in the buffer.)
-				out.push_str(COMMA_SPACE);
-				out.push_str(next.as_ref());
-				many = true;
-			}
-
-			// Add the final punctuation and conjunction.
-			if many { out.push_str(COMMA_SPACE); } else { out.push(' '); }
-			out.push_str(self.as_str());
-			out.push(' ');
-
-			// Cap it off with the last item.
-			out.push_str(buf.as_ref());
-		}
-
-		out
-	}
+wrappers! {
+	$ // TODO: remove when "meta-variable expressions" become stable.
+	FmtBinary   Binary,
+	FmtDebug    Debug,
+	FmtDisplay  Display,
+	FmtLowerExp LowerExp,
+	FmtLowerHex LowerHex,
+	FmtOctal    Octal,
+	FmtUpperExp UpperExp,
+	FmtUpperHex UpperHex,
 }
 
 
 
-/// # Oxford Join.
+#[macro_export]
+/// # Oxford Join Formatter.
 ///
-/// Join a slice of strings with Oxford Commas inserted as necessary.
-///
-/// The return formatting depends on the size of the set:
-///
-/// ```text
-/// "" // Zero.
-/// "first" // One.
-/// "first <CONJUNCTION> last" // Two.
-/// "first, second, …, <CONJUNCTION> last" // Three+.
-/// ```
+/// This macro joins the values of an iterator with [Oxford commas](https://en.wikipedia.org/wiki/Serial_comma)
+/// and a conjunction for `format!`, `println!`, etc., formatting contexts,
+/// without making any intermediary allocations.
 ///
 /// ## Examples
 ///
 /// ```
-/// use oxford_join::{Conjunction, OxfordJoin};
+/// # extern crate alloc;
+/// use oxford_join::oxford_join;
 ///
-/// let set = ["Apples"];
-/// assert_eq!(set.oxford_join(Conjunction::And), "Apples");
+/// assert_eq!(
+///     format!(
+///         "This macro is {}!",
+///         oxford_join!(["simple", "convenient", "niche"].iter()),
+///     ),
+///     "This macro is simple, convenient, and niche!",
+/// );
 ///
-/// let set = ["Apples", "Oranges"];
-/// assert_eq!(set.oxford_join(Conjunction::Or), "Apples or Oranges");
+/// // The default conjunction is "and". An alternative can be specified as
+/// // the first argument.
+/// assert_eq!(
+///     format!("Pick {}.", oxford_join!("or", 1..=5_u8)),
+///     "Pick 1, 2, 3, 4, or 5.",
+/// );
 ///
-/// let set = ["Apples", "Oranges", "Bananas"];
-/// assert_eq!(set.oxford_join(Conjunction::AndOr), "Apples, Oranges, and/or Bananas");
+/// // The output style depends on how many values there are.
+/// let list = ["apples", "bananas", "carrots"];
+/// assert_eq!(
+///     oxford_join!(list.iter().take(0)).to_string(),
+///     "",                             // Zero.
+/// );
+/// assert_eq!(
+///     oxford_join!(list.iter().take(1)).to_string(),
+///     "apples",                       // One.
+/// );
+/// assert_eq!(
+///     oxford_join!(list.iter().take(2)).to_string(),
+///     "apples and bananas",           // Two.
+/// );
+/// assert_eq!(
+///     oxford_join!(list.iter().take(3)).to_string(),
+///     "apples, bananas, and carrots", // Three+.
+/// );
 /// ```
-pub trait OxfordJoin {
-	/// # Oxford Join.
-	///
-	/// Join a slice of strings with Oxford Commas inserted as necessary.
-	fn oxford_join(&self, glue: Conjunction) -> Cow<'_, str>;
+///
+/// [Formatting parameters](https://doc.rust-lang.org/std/fmt/index.html#formatting-parameters)
+/// like alignment, padding, etc., are automatically passed through to each
+/// individual value.
+///
+///```
+/// # extern crate alloc;
+/// # use core::f64::consts::{PI, GOLDEN_RATIO};
+/// # use oxford_join::oxford_join;
+/// // Alignment.
+/// assert_eq!(
+///     format!("{:>3}", oxford_join!("OR", ["no", "yes"].iter())),
+///     " no OR yes",
+/// );
+///
+/// // Padding.
+/// assert_eq!(
+///     format!("{:03}", oxford_join!(1..=3_u8)),
+///     "001, 002, and 003",
+/// );
+///
+/// // Precision.
+/// assert_eq!(
+///     format!("{:03.2}", oxford_join!([PI, GOLDEN_RATIO].iter())),
+///     "3.14 and 1.62",
+/// );
+///```
+///
+/// Alternative [formatting traits](https://doc.rust-lang.org/std/fmt/index.html#formatting-traits)
+/// (except [`Pointer`](fmt::Pointer))
+/// are also supported, but require the matching `@Trait` be manually added as the
+/// first [`oxford_join`] argument.
+///
+/// ```
+/// # extern crate alloc;
+/// # use oxford_join::oxford_join;
+/// // Slices and arrays require Debug.
+/// let slice: &[[u8; 2]] = &[[0, 1], [2, 3], [4, 5]];
+/// assert_eq!(
+///     format!("{:?}", oxford_join!(@Debug slice.iter())),
+///     "[0, 1], [2, 3], and [4, 5]",
+/// );
+/// #
+/// # // Debug can also be useful for quoting.
+/// # let list = ["apples", "bananas", "carrots"];
+/// # assert_eq!(
+/// #     format!("{:?}", oxford_join!(@Debug list.iter().take(0))),
+/// #     "",
+/// # );
+/// # assert_eq!(
+/// #     format!("{:?}", oxford_join!(@Debug list.iter().take(1))),
+/// #     r#""apples""#,                           // One.
+/// # );
+/// # assert_eq!(
+/// #     format!("{:?}", oxford_join!(@Debug list.iter().take(2))),
+/// #     r#""apples" and "bananas""#,             // Two.
+/// # );
+/// # assert_eq!(
+/// #     format!("{:?}", oxford_join!(@Debug list.iter().take(3))),
+/// #     r#""apples", "bananas", and "carrots""#, // Three+.
+/// # );
+///
+/// // Integer primitives implement all sorts of different traits!
+/// assert_eq!(
+///     format!("{:04b}", oxford_join!(@Binary 0..3_u8)),
+///     "0000, 0001, and 0010",
+/// );
+/// assert_eq!(
+///     format!("{:#04b}", oxford_join!(@Binary 0..3_u8)),
+///     "0b00, 0b01, and 0b10",
+/// );
+///
+/// assert_eq!(
+///     format!("{:e}", oxford_join!(@LowerExp [1, 42, 3456].iter())),
+///     "1e0, 4.2e1, and 3.456e3",
+/// );
+/// assert_eq!(
+///     format!("{:E}", oxford_join!(@UpperExp [1, 42, 3456].iter())),
+///     "1E0, 4.2E1, and 3.456E3",
+/// );
+///
+/// assert_eq!(
+///     format!("{:02x}", oxford_join!(@LowerHex 10..15_u8)),
+///     "0a, 0b, 0c, 0d, and 0e",
+/// );
+/// assert_eq!(
+///     format!("{:#04x}", oxford_join!(@LowerHex '&', 10..15_u8)),
+///     "0x0a, 0x0b, 0x0c, 0x0d, & 0x0e",
+/// );
+/// assert_eq!(
+///     format!("{:02X}", oxford_join!(@UpperHex 10..15_u8)),
+///     "0A, 0B, 0C, 0D, and 0E",
+/// );
+/// assert_eq!(
+///     format!("{:#04X}", oxford_join!(@UpperHex 10..15_u8)),
+///     "0x0A, 0x0B, 0x0C, 0x0D, and 0x0E",
+/// );
+///
+/// assert_eq!(
+///     format!("{:03o}", oxford_join!(@Octal "and/or", 100..103_u8)),
+///     "144, 145, and/or 146",
+/// );
+/// assert_eq!(
+///     format!("{:#05o}", oxford_join!(@Octal "and/or", 100..103_u8)),
+///     "0o144, 0o145, and/or 0o146",
+/// );
+/// ```
+///
+/// [`Display`](fmt::Display) is the default and can be omitted, but if doing
+/// something else, the formatting type parameter and [`oxford_join`] `@Trait`
+/// must both be present and match, otherwise you'll get a compile-time error.
+///
+/// ```compile_fail
+/// # use oxford_join::oxford_join;
+/// // error[E0277]: `oxford_join::FmtDisplay<{closure}>` doesn't implement
+/// // `std::fmt::Debug`
+/// println!(
+///     "{:?}.", oxford_join!(u8::MIN..=u8::MAX),
+/// //     ^Debug "type"     ^Needs @Debug
+/// );
+/// ```
+///
+/// Typos and unsupported traits will also produce a compile-time error.
+///
+/// ```compile_fail
+/// # use oxford_join::oxford_join;
+/// // error: Supported traits are @Binary @Debug @Display @LowerExp @LowerHex
+/// // @Octal @UpperExp @UpperHex
+/// println!(
+///     "{:?}.", oxford_join!(@Degub u8::MIN..=u8::MAX),
+/// //                        ^Oops.
+/// );
+/// ```
+///
+/// Value types, of course, must actually implement the relevant [formatting trait](https://doc.rust-lang.org/std/fmt/index.html#formatting-traits)
+/// too, or again, you'll get a compile-time error.
+///
+/// ```compile_fail
+/// # use core::cmp::Ordering;
+/// # use oxford_join::oxford_join;
+/// // error[E0277]: `core::cmp::Ordering` doesn't implement `fmt::Display`
+/// println!(
+///     "Expected {}.",
+///     oxford_join!(
+///         "or",
+///         [Ordering::Less, Ordering::Equal, Ordering::Greater].iter(),
+///     ),
+/// );
+/// ```
+macro_rules! oxford_join {
+	(@$trait:ident $conjunction:literal, $list:expr $(,)?) => (
+		$crate::wrap!(@$trait |f| {
+			let mut list = $list;
 
-	#[inline]
-	/// # Oxford Join (and).
-	///
-	/// This is equivalent to calling `oxford_join(Conjunction::And)`.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use oxford_join::{Conjunction, OxfordJoin};
-	///
-	/// let set = ["Apples", "Oranges"];
-	/// assert_eq!(set.oxford_join(Conjunction::And), set.oxford_and());
-	/// ```
-	fn oxford_and(&self) -> Cow<'_, str> { self.oxford_join(Conjunction::And) }
-
-	#[inline]
-	/// # Oxford Join (and/or).
-	///
-	/// This is equivalent to calling `oxford_join(Conjunction::AndOr)`.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use oxford_join::{Conjunction, OxfordJoin};
-	///
-	/// let set = ["Apples", "Oranges"];
-	/// assert_eq!(set.oxford_join(Conjunction::AndOr), set.oxford_and_or());
-	/// ```
-	fn oxford_and_or(&self) -> Cow<'_, str> { self.oxford_join(Conjunction::AndOr) }
-
-	#[inline]
-	/// # Oxford Join (nor).
-	///
-	/// This is equivalent to calling `oxford_join(Conjunction::Nor)`.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use oxford_join::{Conjunction, OxfordJoin};
-	///
-	/// let set = ["Apples", "Oranges"];
-	/// assert_eq!(set.oxford_join(Conjunction::Nor), set.oxford_nor());
-	/// ```
-	fn oxford_nor(&self) -> Cow<'_, str> { self.oxford_join(Conjunction::Nor) }
-
-	#[inline]
-	/// # Oxford Join (or).
-	///
-	/// This is equivalent to calling `oxford_join(Conjunction::Or)`.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use oxford_join::{Conjunction, OxfordJoin};
-	///
-	/// let set = ["Apples", "Oranges"];
-	/// assert_eq!(set.oxford_join(Conjunction::Or), set.oxford_or());
-	/// ```
-	fn oxford_or(&self) -> Cow<'_, str> { self.oxford_join(Conjunction::Or) }
-}
-
-impl<T> OxfordJoin for [T] where T: AsRef<str> {
-	/// # Oxford Join.
-	fn oxford_join(&self, glue: Conjunction) -> Cow<'_, str> {
-		// Split off the last element.
-		let Some((last, rest)) = self.split_last() else { return Cow::Borrowed(""); };
-		let last: &str = last.as_ref();
-
-		// What we do now comes down to how big rest is.
-		match rest.len().cmp(&1) {
-			// One element.
-			Ordering::Less => Cow::Borrowed(last),
-			// Two elements.
-			Ordering::Equal => Cow::Owned(two_and_glue(rest[0].as_ref(), last, glue)),
-			// Three or more elements.
-			Ordering::Greater => {
-				// Three or more.
-				let (glue, glue_more) = glue.as_str_n();
-				let len =
-					glue.len() + usize::from(glue_more) + // Glue.
-					last.len() + // Last element.
-					rest.iter().map(|x| x.as_ref().len() + 2).sum::<usize>();
-
-				let mut out = String::with_capacity(len);
-
-				// Push all but the last element with trailing ", ".
-				for v in rest {
-					out.push_str(v.as_ref());
-					out.push_str(COMMA_SPACE);
-				}
-
-				// Push the conjunction.
-				out.push_str(glue);
-				if glue_more { out.push(' '); }
-
-				// Push the last element.
-				out.push_str(last);
-
-				// Done!
-				Cow::Owned(out)
-			},
-		}
-	}
-}
-
-impl<T> OxfordJoin for [T; 0] where T: AsRef<str> {
-	#[inline]
-	/// # Oxford Join.
-	///
-	/// This is a special case; the result is always empty.
-	fn oxford_join(&self, _glue: Conjunction) -> Cow<'_, str> { Cow::Borrowed("") }
-}
-
-impl<T> OxfordJoin for [T; 1] where T: AsRef<str> {
-	#[inline]
-	/// # Oxford Join.
-	///
-	/// This is a special case; the sole entry will be returned as-is.
-	fn oxford_join(&self, _glue: Conjunction) -> Cow<'_, str> {
-		Cow::Borrowed(self[0].as_ref())
-	}
-}
-
-impl<T> OxfordJoin for [T; 2] where T: AsRef<str> {
-	#[inline]
-	/// # Oxford Join.
-	///
-	/// This is a special case; it will always read "first CONJUNCTION last".
-	fn oxford_join(&self, glue: Conjunction) -> Cow<'_, str> {
-		Cow::Owned(two_and_glue(self[0].as_ref(), self[1].as_ref(), glue))
-	}
-}
-
-/// # Join Arrays (3+).
-macro_rules! join_arrays {
-	($($num:literal $last:literal),+ $(,)?) => ($(
-		impl<T> OxfordJoin for [T; $num] where T: AsRef<str> {
-			/// # Oxford Join.
-			fn oxford_join(&self, glue: Conjunction) -> Cow<'_, str> {
-				let (glue, glue_more) = glue.as_str_n();
-				let len =
-					glue.len() + usize::from(glue_more) + // Glue.
-					$last * 2 +  // ", " for each leading element.
-					self.iter().map(|x| x.as_ref().len()).sum::<usize>();
-
-				let mut out = String::with_capacity(len);
-
-				// Push all but the last element with trailing ", ".
-				for v in &self[..$last] {
-					out.push_str(v.as_ref());
-					out.push_str(COMMA_SPACE);
-				}
-
-				// Push the conjunction.
-				out.push_str(glue);
-				if glue_more { out.push(' '); }
-
-				// Push the last element.
-				out.push_str(self[$last].as_ref());
-
-				// Done!
-				Cow::Owned(out)
-			}
-		}
-	)+);
-}
-
-join_arrays! {
-	 3  2,
-	 4  3,
-	 5  4,
-	 6  5,
-	 7  6,
-	 8  7,
-	 9  8,
-	10  9,
-	11 10,
-	12 11,
-	13 12,
-	14 13,
-	15 14,
-	16 15,
-	17 16,
-	18 17,
-	19 18,
-	20 19,
-	21 20,
-	22 21,
-	23 22,
-	24 23,
-	25 24,
-	26 25,
-	27 26,
-	28 27,
-	29 28,
-	30 29,
-	31 30,
-	32 31,
-}
-
-/// # Helper: Binary Tree Joins.
-macro_rules! join_btrees {
-	($iter:ident) => (
-		/// # Oxford Join.
-		fn oxford_join(&self, glue: Conjunction) -> Cow<'_, str> {
-			let mut iter = self.$iter();
-
-			// Do we have a first?
-			let Some(a) = iter.next() else { return Cow::Borrowed(""); };
-			let a: &str = a.as_ref();
-
-			// Can we get a second?
-			let Some(b) = iter.next() else { return Cow::Borrowed(a); };
-			let b: &str = b.as_ref();
-
-			// How about a third?
-			let Some(c) = iter.next() else {
-				return Cow::Owned(two_and_glue(a, b, glue));
+			// Small lists require different formatting, so we need to pre-load
+			// a few entries to know what we're dealing with.
+			let Some(next) = list.next() else {
+				return Ok(()); // Zero.
+			};
+			<_ as ::core::fmt::$trait>::fmt(&next, f)?; // The first value.
+			let Some(next) = list.next() else {
+				return Ok(()); // One.
+			};
+			let Some(mut dangle) = list.next() else {
+				// Two.
+				f.write_str(::core::concat!(" ", $conjunction, " "))?;
+				return <_ as ::core::fmt::$trait>::fmt(&next, f);
 			};
 
-			let (glue, glue_more) = glue.as_str_n();
-			let len =
-				glue.len() + usize::from(glue_more) + // Glue.
-				(self.len() - 1) * 2 + // ", " for all but last.
-				self.$iter().map(|x| x.as_ref().len()).sum::<usize>();
+			// With three+ items, all but the last are written with trailing
+			// commas. To that end, we need to catch up to the current "last".
+			f.write_str(", ")?;
+			<_ as ::core::fmt::$trait>::fmt(&next, f)?;
+			f.write_str(", ")?;
 
-			let mut out = String::with_capacity(len);
-
-			// Start with what we already know.
-			out.push_str(a);
-			out.push_str(COMMA_SPACE);
-			out.push_str(b);
-			out.push_str(COMMA_SPACE);
-
-			// Loop through the remainder, saving the last for last.
-			let mut buf = c;
-			for next in iter.map(|n| core::mem::replace(&mut buf, n)) {
-				// Add the _previous_ value to the output. (The "current" value
-				// is now in the buffer.)
-				out.push_str(next.as_ref());
-				out.push_str(COMMA_SPACE);
+			// Loop through the remainder, writing the previous value at each
+			// step. (The current is moved to `dangle`.)
+			for next in list {
+				<_ as ::core::fmt::$trait>::fmt(
+					&::core::mem::replace(&mut dangle, next),
+					f,
+				)?;
+				f.write_str(", ")?;
 			}
 
-			// Push the conjunction.
-			out.push_str(glue);
-			if glue_more { out.push(' '); }
+			// Write the conjunction and final value!
+			f.write_str(::core::concat!($conjunction, " "))?;
+			<_ as ::core::fmt::$trait>::fmt(&dangle, f)
+		})
+	);
+	($conjunction:literal, $list:expr $(,)?) => ( $crate::oxford_join!(@Display $conjunction, $list) );
 
-			// Push the last element.
-			out.push_str(buf.as_ref());
+	(@$trait:ident $list:expr $(,)?) => ( $crate::oxford_join!(@$trait "and", $list) );
+	($list:expr $(,)?) => ( $crate::oxford_join!(@Display $list) );
 
-			// Done!
-			Cow::Owned(out)
-		}
+	// Catchall error message.
+	( $( $tt:tt )* ) => (
+		::core::compile_error!(
+			::core::concat!(
+				"Incorrect macro usage.\n",
+				"oxford_join!(IteratorExpr)\n",
+				"oxford_join!(ConjunctionLiteral, IteratorExpr)\n",
+				"oxford_join!(@TraitIdent IteratorExpr)\n",
+				"oxford_join!(@TraitIdent ConjunctionLiteral, IteratorExpr)",
+			)
+		)
 	);
 }
 
-impl<K, T> OxfordJoin for BTreeMap<K, T> where T: AsRef<str> { join_btrees!(values); }
-
-impl<T> OxfordJoin for BTreeSet<T> where T: AsRef<str> { join_btrees!(iter); }
 
 
-
-#[inline]
-/// # Two and Glue!
+#[macro_export]
+/// # Join Formatter.
 ///
-/// Join two elements and some glue into a new string.
-fn two_and_glue(a: &str, b: &str, glue: Conjunction<'_>) -> String {
-	let len = a.len() + b.len() + 2 + glue.len();
-	let mut out = String::with_capacity(len);
-	out.push_str(a);
-	match glue.as_str_2() {
-		Ok(s) => { out.push_str(s); }
-		Err(s) => {
-			out.push(' ');
-			out.push_str(s);
-			out.push(' ');
-		}
-	}
-	out.push_str(b);
-	out
-}
-
-
-
-#[cfg(test)]
-mod tests {
-	use super::*;
-	use brunch as _;
-	use alloc::format;
-
-	const CTEST: [Conjunction; 7] = [
-		Conjunction::Ampersand,
-		Conjunction::And,
-		Conjunction::AndOr,
-		Conjunction::Nor,
-		Conjunction::Or,
-		Conjunction::Other("Boo"),
-		Conjunction::Plus,
-	];
-
-	#[test]
-	#[expect(clippy::cognitive_complexity, reason = "It is what it is.")]
-	fn t_fruit() {
-		use alloc::string::ToString;
-
-		// Make sure arrays, slices, vecs, boxes, etc., all work out the same
-		// way.
-		macro_rules! compare {
-			($($arr:ident, $expected:literal),+ $(,)?) => ($(
-				assert_eq!($arr.oxford_and(), $expected, "Array.");
-				assert_eq!($arr.as_slice().oxford_and(), $expected, "Slice.");
-
-				let v = $arr.to_vec();
-				assert_eq!(v.oxford_and(), $expected, "Vec.");
-				assert_eq!(v.into_boxed_slice().oxford_and(), $expected, "Box.");
-
-				let v: BTreeMap<usize, &str> = $arr.into_iter().enumerate().collect();
-				assert_eq!(v.oxford_and(), $expected, "BTreeMap.");
-
-				let v = BTreeSet::from($arr);
-				assert_eq!(v.oxford_and(), $expected, "BTreeSet.");
-
-				assert_eq!(
-					OxfordJoinFmt::and($arr.as_slice()).to_string(),
-					$expected,
-					"OxfordJoinFmt::to_string",
-				);
-			)+);
-		}
-
-		const ARR0: [&str; 0] = [];
-		const ARR1: [&str; 1] = ["Apples"];
-		const ARR2: [&str; 2] = ["Apples", "Bananas"];
-		const ARR3: [&str; 3] = ["Apples", "Bananas", "Carrots"];
-		const ARR4: [&str; 4] = ["Apples", "Bananas", "Carrots", "Dates"];
-		const ARR5: [&str; 5] = ["Apples", "Bananas", "Carrots", "Dates", "Eggplant"];
-		const ARR32: [&str; 32] = [
-			"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F",
-			"G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V",
-		];
-
-		compare!(
-			ARR0, "",
-			ARR1, "Apples",
-			ARR2, "Apples and Bananas",
-			ARR3, "Apples, Bananas, and Carrots",
-			ARR4, "Apples, Bananas, Carrots, and Dates",
-			ARR5, "Apples, Bananas, Carrots, Dates, and Eggplant",
-			ARR32, "0, 1, 2, 3, 4, 5, 6, 7, 8, 9, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, and V",
-		);
-	}
-
-	#[test]
-	fn conjunction_len() {
-		for c in CTEST {
-			assert_eq!(c.len(), c.as_str().len());
-			assert!(! c.is_empty());
-
-			// Version two.
-			match c.as_str_2() {
-				// Should match if spaces are added.
-				Ok(s) => {
-					assert_eq!(
-						format!(" {} ", c.as_str()),
-						s,
-					);
-				},
-				// Should match exactly because custom.
-				Err(s) => { assert_eq!(c.as_str(), s); },
+/// This macro joins the values of an iterator with arbitrary glue for
+/// `format!`, `println!`, etc., formatting contexts, without making any
+/// intermediary allocations.
+///
+/// ## Examples
+///
+/// ```
+/// # extern crate alloc;
+/// # use core::iter;
+/// use oxford_join::join;
+///
+/// // With just one thing, the "join" is moot.
+/// assert_eq!(
+///     join!(", ", iter::once("apples")).to_string(),
+///     "apples",
+/// );
+///
+/// // But with many things…
+/// assert_eq!(
+///     join!(" + ", 0..10_u8).to_string(),
+///     "0 + 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9",
+/// );
+///
+/// // The glue is optional.
+/// assert_eq!(
+///     join!(['a', 'b', 'c'].iter()).to_string(),
+///     "abc",
+/// );
+/// ```
+///
+/// [Formatting parameters](https://doc.rust-lang.org/std/fmt/index.html#formatting-parameters)
+/// like alignment, padding, etc., are automatically passed through to each
+/// individual value.
+///
+///```
+/// # extern crate alloc;
+/// # use core::f64::consts::{PI, GOLDEN_RATIO};
+/// # use oxford_join::join;
+/// // Alignment.
+/// assert_eq!(
+///     format!("{:>3}", join!("\n", ["no", "yes"].iter())),
+///     " no\nyes",
+/// );
+///
+/// // Padding.
+/// assert_eq!(
+///     format!("{:03}", join!(" + ", 1..=3_u8)),
+///     "001 + 002 + 003",
+/// );
+///
+/// // Precision.
+/// assert_eq!(
+///     format!("{:03.2}", join!(" / ", [PI, GOLDEN_RATIO].iter())),
+///     "3.14 / 1.62",
+/// );
+///```
+///
+/// Alternative [formatting traits](https://doc.rust-lang.org/std/fmt/index.html#formatting-traits)
+/// (except [`Pointer`](fmt::Pointer))
+/// are also supported, but require the matching `@Trait` be manually added as the
+/// first [`join`] argument.
+///
+/// ```
+/// # extern crate alloc;
+/// # use oxford_join::join;
+/// // Slices and arrays require Debug.
+/// let slice: &[[u8; 2]] = &[[0, 1], [2, 3]];
+/// assert_eq!(
+///     format!("{:?}", join!(@Debug '\n', slice.iter())),
+///     "[0, 1]\n[2, 3]",
+/// );
+///
+/// // Glue is still technically optional.
+/// assert_eq!(
+///     format!("{:?}", join!(@Debug ['a', 'b', 'c'].iter())),
+///     "'a''b''c'",
+/// );
+///
+/// // Integer primitives implement all sorts of different traits!
+/// assert_eq!(
+///     format!("{:04b}", join!(@Binary ", ", 0..3_u8)),
+///     "0000, 0001, 0010",
+/// );
+/// assert_eq!(
+///     format!("{:#04b}", join!(@Binary ", ", 0..3_u8)),
+///     "0b00, 0b01, 0b10",
+/// );
+///
+/// assert_eq!(
+///     format!("{:e}", join!(@LowerExp " ~ ", [1, 42, 3456].iter())),
+///     "1e0 ~ 4.2e1 ~ 3.456e3",
+/// );
+/// assert_eq!(
+///     format!("{:E}", join!(@UpperExp " ~ ", [1, 42, 3456].iter())),
+///     "1E0 ~ 4.2E1 ~ 3.456E3",
+/// );
+///
+/// assert_eq!(
+///     format!("{:02x}", join!(@LowerHex " + ", 10..15_u8)),
+///     "0a + 0b + 0c + 0d + 0e",
+/// );
+/// assert_eq!(
+///     format!("{:#04x}", join!(@LowerHex " + ", 10..15_u8)),
+///     "0x0a + 0x0b + 0x0c + 0x0d + 0x0e",
+/// );
+/// assert_eq!(
+///     format!("{:02X}", join!(@UpperHex " + ", 10..15_u8)),
+///     "0A + 0B + 0C + 0D + 0E",
+/// );
+/// assert_eq!(
+///     format!("{:#04X}", join!(@UpperHex " + ", 10..15_u8)),
+///     "0x0A + 0x0B + 0x0C + 0x0D + 0x0E",
+/// );
+///
+/// assert_eq!(
+///     format!("{:03o}", join!(@Octal ", ", 100..103_u8)),
+///     "144, 145, 146",
+/// );
+/// assert_eq!(
+///     format!("{:#05o}", join!(@Octal ", ", 100..103_u8)),
+///     "0o144, 0o145, 0o146",
+/// );
+/// ```
+///
+/// [`Display`](fmt::Display) is the default and can be omitted, but if doing
+/// something else, the formatting type parameter and [`join`] `@Trait`
+/// must both be present and match, otherwise you'll get a compile-time error.
+///
+/// ```compile_fail
+/// # use oxford_join::join;
+/// // error[E0277]: `oxford_join::FmtDisplay<{closure}>` doesn't implement
+/// // `std::fmt::LowerHex`
+/// println!(
+///     "{:#x}.",
+/// //      ^LowerHex "type"
+///     join!(", ", u8::MIN..=u8::MAX),
+/// //        ^Missing @LowerHex
+/// );
+/// ```
+///
+/// Typos and unsupported traits will also produce a compile-time error.
+///
+/// ```compile_fail
+/// # use oxford_join::join;
+/// // error: Supported traits are @Binary @Debug @Display @LowerExp @LowerHex
+/// // @Octal @UpperExp @UpperHex
+/// println!(
+///     "{:#x}.", join!(@hex ", ", u8::MIN..=u8::MAX),
+/// //                  ^Oops.
+/// );
+/// ```
+///
+/// Value types, of course, must actually implement the relevant [formatting trait](https://doc.rust-lang.org/std/fmt/index.html#formatting-traits)
+/// too, or again, you'll get a compile-time error.
+///
+/// ```compile_fail
+/// # use core::cmp::Ordering;
+/// # use oxford_join::join;
+/// // error[E0277]: `core::cmp::Ordering` doesn't implement `fmt::Display`
+/// println!(
+///     "Possible orderings: {}.",
+///     join!(
+///         ", ",
+///         [Ordering::Less, Ordering::Equal, Ordering::Greater].iter(),
+///     ),
+/// );
+///```
+macro_rules! join {
+	(@$trait:ident $glue:literal, $list:expr $(,)?) => (
+		$crate::wrap!(@$trait |f| {
+			let mut any = false;
+			for next in $list {
+				if any { f.write_str(::core::concat!($glue))?; }
+				else { any = true; }
+				<_ as ::core::fmt::$trait>::fmt(&next, f)?;
 			}
+			Ok(())
+		})
+	);
+	($glue:literal, $list:expr $(,)?) => ( $crate::join!(@Display $glue, $list) );
 
-			// Version N.
-			match c.as_str_n() {
-				// Should match with stuff on the ends.
-				(s, false) => {
-					assert_eq!(
-						format!("{} ", c.as_str()),
-						s,
-					);
-				},
-				// Should match exactly because custom.
-				(s, true) => { assert_eq!(c.as_str(), s); },
+	(@$trait:ident $list:expr $(,)?) => (
+		$crate::wrap!(@$trait |f| {
+			for next in $list {
+				<_ as ::core::fmt::$trait>::fmt(&next, f)?;
 			}
-		}
+			Ok(())
+		})
+	);
+	($list:expr $(,)?) => ( $crate::join!(@Display $list) );
 
-		assert!(Conjunction::Other("").is_empty());
-	}
+	// Catchall error message.
+	( $( $tt:tt )* ) => (
+		::core::compile_error!(
+			::core::concat!(
+				"Incorrect macro usage.\n",
+				"join!(IteratorExpr)\n",
+				"join!(GlueLiteral, IteratorExpr)\n",
+				"join!(@TraitIdent IteratorExpr)\n",
+				"join!(@TraitIdent GlueLiteral, IteratorExpr)",
+			)
+		)
+	);
 }

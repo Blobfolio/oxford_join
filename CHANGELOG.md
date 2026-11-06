@@ -1,6 +1,23 @@
 # Changelog
 
 
+## [0.9.0](https://github.com/Blobfolio/oxford_join/releases/tag/v0.9.0) - TBD
+
+This release replaces _all_ of the traits and structs from previous releases with two simple macros.
+
+### New
+
+* `join!`
+* `oxford_join!`
+
+### Removed
+
+* `Conjunction`
+* `JoinFmt`
+* `OxfordJoin`
+* `OxfordJoinFmt`
+
+
 ## [0.8.0](https://github.com/Blobfolio/oxford_join/releases/tag/v0.8.0) - 2026-10-01
 
 ### Changed
