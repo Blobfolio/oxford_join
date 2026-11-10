@@ -4,8 +4,9 @@
 [![docs.rs](https://img.shields.io/docsrs/oxford_join.svg?style=flat-square&label=docs.rs)](https://docs.rs/oxford_join/)
 [![changelog](https://img.shields.io/crates/v/oxford_join.svg?style=flat-square&label=changelog&color=9b59b6)](https://github.com/Blobfolio/oxford_join/blob/master/CHANGELOG.md)<br>
 [![crates.io](https://img.shields.io/crates/v/oxford_join.svg?style=flat-square&label=crates.io)](https://crates.io/crates/oxford_join)
-[![ci](https://img.shields.io/github/actions/workflow/status/Blobfolio/oxford_join/ci.yaml?style=flat-square&label=ci)](https://github.com/Blobfolio/oxford_join/actions)
-[![deps.rs](https://deps.rs/crate/oxford_join/latest/status.svg?style=flat-square&label=deps.rs)](https://deps.rs/crate/oxford_join/)<br>
+[![ci](https://img.shields.io/github/actions/workflow/status/Blobfolio/oxford_join/ci.yaml?style=flat-square&label=ci)](https://github.com/Blobfolio/oxford_join/actions)<br>
+[![deps.rs](https://deps.rs/crate/oxford_join/latest/status.svg?style=flat-square&label=deps.rs)](https://deps.rs/crate/oxford_join/)
+[![no_std](https://img.shields.io/badge/env-%23![no_std]-00abc0?style=flat-square)](https://docs.rust-embedded.org/book/intro/no-std.html)<br>
 [![license](https://img.shields.io/badge/license-wtfpl-ff1493?style=flat-square)](https://en.wikipedia.org/wiki/WTFPL)
 [![contributions welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square&label=contributions)](https://github.com/Blobfolio/oxford_join/issues)
 
@@ -122,7 +123,7 @@ macro_rules! wrappers {
 	( $d:tt $( $struct:ident $trait:ident, )+ ) => (
 		$(
 			#[doc(hidden)]
-			#[doc = concat!("# Format Type (", stringify!($trait), ")")]
+			#[doc = concat!("# Format Type ([`", stringify!($trait), "`](fmt::", stringify!($trait), "))")]
 			pub struct $struct<F>(F);
 
 			#[doc(hidden)]
