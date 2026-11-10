@@ -1,7 +1,7 @@
 # Changelog
 
 
-## [0.9.0](https://github.com/Blobfolio/oxford_join/releases/tag/v0.9.0) - TBD
+## [0.9.0](https://github.com/Blobfolio/oxford_join/releases/tag/v0.9.0) - 2026-11-10
 
 This release replaces _all_ of the traits and structs from previous releases with two simple macros.
 
