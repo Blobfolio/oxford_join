@@ -1,6 +1,13 @@
 # Changelog
 
 
+## [0.9.1](https://github.com/Blobfolio/oxford_join/releases/tag/v0.9.1) - 2026-11-12
+
+### Changed
+
+* Enable more flexible glue typing for `join!`.
+
+
 ## [0.9.0](https://github.com/Blobfolio/oxford_join/releases/tag/v0.9.0) - 2026-11-10
 
 This release replaces _all_ of the traits and structs from previous releases with two simple macros.
