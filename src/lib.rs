@@ -609,8 +609,42 @@ macro_rules! oxford_join {
 ///     ),
 /// );
 ///```
+///
+/// ## Advanced Glue
+///
+/// All of the above examples use string and char literals for glue, but
+/// macro expressions producing the same are also supported. They just need to
+/// be wrapped in parentheses.
+///
+/// ```
+/// # extern crate alloc;
+/// # use core::cmp::Ordering;
+/// # use oxford_join::join;
+/// /// Helper: ANSI dim.
+/// macro_rules! dim {
+///     ( $label:expr ) => ( concat!("\x1b[2m", $label, "\x1b[0m") );
+/// }
+///
+/// assert_eq!(
+///     join!((dim!(" + ")), 1..=3_u8).to_string(),
+/// //        ^           ^ Wrapped to differentiate from literal literals.
+///     "1\x1b[2m + \x1b[0m2\x1b[2m + \x1b[0m3",
+/// );
+///
+/// assert_eq!(
+///     format!(
+///         "{:?}",
+///         join!(
+///             @Debug
+///             (concat!(' ', dim!('<'), ' ')),
+///             [Ordering::Less, Ordering::Greater].iter(),
+///         ),
+///     ),
+///     "Less \x1b[2m<\x1b[0m Greater",
+/// );
+/// ```
 macro_rules! join {
-	(@$trait:ident $glue:literal, $list:expr $(,)?) => (
+	(@$trait:ident ( $glue:expr ), $list:expr $(,)?) => (
 		$crate::wrap!(@$trait |f| {
 			let mut any = false;
 			for next in $list {
@@ -621,7 +655,10 @@ macro_rules! join {
 			Ok(())
 		})
 	);
-	($glue:literal, $list:expr $(,)?) => ( $crate::join!(@Display $glue, $list) );
+	(@$trait:ident $glue:literal, $list:expr $(,)?) => ( $crate::join!(@$trait ( $glue ), $list) );
+
+	(( $glue:expr ), $list:expr $(,)?) => ( $crate::join!(@Display ( $glue ), $list) );
+	($glue:literal, $list:expr $(,)?) =>  ( $crate::join!(@Display ( $glue ), $list) );
 
 	(@$trait:ident $list:expr $(,)?) => (
 		$crate::wrap!(@$trait |f| {
@@ -640,8 +677,10 @@ macro_rules! join {
 				"Incorrect macro usage.\n",
 				"join!(IteratorExpr)\n",
 				"join!(GlueLiteral, IteratorExpr)\n",
+				"join!((GlueLitExpr), IteratorExpr)\n",
 				"join!(@TraitIdent IteratorExpr)\n",
-				"join!(@TraitIdent GlueLiteral, IteratorExpr)",
+				"join!(@TraitIdent GlueLiteral, IteratorExpr)\n",
+				"join!(@TraitIdent (GlueLitExpr), IteratorExpr)",
 			)
 		)
 	);
